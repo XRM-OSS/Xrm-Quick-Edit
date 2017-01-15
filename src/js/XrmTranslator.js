@@ -28,10 +28,81 @@
     var entityMetadata = {};
     var attributeMetadata = [];
     var availableLanguages = [];
-
+    var languageMappings = null;
     var translationApiUrl = "https://glosbe.com/gapi/translate?from=[sourceLanguage]&dest=[destLanguage]&format=json&phrase=[phrase]&pretty=true&tm=false&callback=?";
     
     var currentEntity = null;
+    
+    /// Thanks to http://www.chaholl.com/archive/2013/05/07/iso-639-2-to-windows-lcid-mapping.aspx for the mappings
+    function GetLanguageIsoByLcid (lcid) {
+        if (!languageMappings) {
+            languageMappings = {};
+        
+            languageMappings[1076] = "afr";
+            languageMappings[1118] = "ara";
+            languageMappings[1068] = "aze";
+            languageMappings[1059] = "bel";
+            languageMappings[1026] = "bul";
+            languageMappings[1027] = "cat";
+            languageMappings[2052] = "zho";
+            languageMappings[1050] = "hrv";
+            languageMappings[1029] = "ces";
+            languageMappings[1030] = "dan";
+            languageMappings[1125] = "div";
+            languageMappings[1043] = "nld";
+            languageMappings[1033] = "eng";
+            languageMappings[1061] = "est";
+            languageMappings[1080] = "fao";
+            languageMappings[1035] = "fin";
+            languageMappings[1036] = "fra";
+            languageMappings[1110] = "glg";
+            languageMappings[1079] = "kat";
+            languageMappings[1031] = "deu";
+            languageMappings[1032] = "ell";
+            languageMappings[1095] = "guj";
+            languageMappings[1037] = "heb";
+            languageMappings[1081] = "hin";
+            languageMappings[1038] = "hun";
+            languageMappings[1039] = "isl";
+            languageMappings[1057] = "ind";
+            languageMappings[1040] = "ita";
+            languageMappings[1041] = "jpn";
+            languageMappings[1099] = "kan";
+            languageMappings[1087] = "kaz";
+            languageMappings[1089] = "swa";
+            languageMappings[1042] = "kor";
+            languageMappings[1088] = "kir";
+            languageMappings[1062] = "lav";
+            languageMappings[1063] = "lit";
+            languageMappings[1071] = "mkd";
+            languageMappings[1086] = "msa";
+            languageMappings[1102] = "mar";
+            languageMappings[1104] = "mon";
+            languageMappings[1044] = "nor";
+            languageMappings[1045] = "pol";
+            languageMappings[1046] = "por";
+            languageMappings[1094] = "pan";
+            languageMappings[1048] = "ron";
+            languageMappings[1049] = "rus";
+            languageMappings[1103] = "san";
+            languageMappings[2074] = "srp";
+            languageMappings[1051] = "slk";
+            languageMappings[1060] = "slv";
+            languageMappings[1034] = "spa";
+            languageMappings[1053] = "swe";
+            languageMappings[1097] = "tam";
+            languageMappings[1092] = "tat";
+            languageMappings[1098] = "tel";
+            languageMappings[1054] = "tha";
+            languageMappings[1055] = "tur";
+            languageMappings[1058] = "ukr";
+            languageMappings[1056] = "urd";
+            languageMappings[1091] = "uzb";
+            languageMappings[1066] = "vie";
+        }
+        
+        return languageMappings[lcid];
+    }
     
     function BuildTranslationUrl (fromLanguage, destLanguage, phrase) {
         return translationApiUrl
@@ -227,10 +298,69 @@
             });
     }
     
+    function GetRecord (records, selector) {
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            
+            if (selector(record)) {
+                return record;
+            }
+        }
+        
+        return null;
+    }
+    
+    function CapitalizeFirstChar (text) {
+        if (!text) {
+            return "";
+        }
+        
+        return text[0].toUpperCase() + text.substring(1);
+    }
+    
+    function AddTranslations(fromLcid, destLcid, updateRecords, responses) {
+        var savable = false;
+        
+        for (var i = 0; i < responses.length; i++) {
+            var response = responses[i];
+            
+            if (response.tuc.length > 0) {
+                var translation = response.tuc[0].phrase.text;
+                var phrase = response.phrase;
+                
+                var record = GetRecord(updateRecords, function (r) {
+                    if (r[fromLcid] === phrase) {
+                        return true;
+                    }
+                    return false;
+                });
+                
+                if (!record) {
+                    continue;
+                }
+                
+                record["w2ui"] = {};
+                record.w2ui["changes"] = {};
+                record.w2ui.changes[destLcid] = CapitalizeFirstChar(translation);
+                
+                savable = true;
+                
+                GetGrid().refreshRow(record.recid);
+            }
+        }
+        
+        if (savable) {
+            var saveButton = w2ui.grid_toolbar.get("w2ui-save");
+            saveButton.disabled = false;
+            w2ui.grid_toolbar.refresh();
+        }
+    }
+    
     function ProposeTranslations(fromLcid, destLcid) {
         LockGrid("Translating...");
         
         var records = GetGrid().records;
+        var updateRecords = [];
         var translationRequests = [];
         
         for (var i = 0; i < records.length; i++) {
@@ -240,12 +370,13 @@
                 continue;
             }
             
-            translationRequests.push(GetTranslation("deu", "eng", record[fromLcid]));
+            updateRecords.push(record);
+            translationRequests.push(GetTranslation(GetLanguageIsoByLcid(fromLcid), GetLanguageIsoByLcid(destLcid), record[fromLcid]));
         }
         
         Promise.all(translationRequests)
             .then(function (responses) {
-                debugger;
+                AddTranslations(fromLcid, destLcid, updateRecords, responses);
                 UnlockGrid();
             })
             .catch(function(error) {
@@ -292,10 +423,10 @@
                         this.validate(); 
                         
                         ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
-                        this.close();
+                        w2popup.close();
                     },
                     "cancel": function () {
-                        this.close(); 
+                        w2popup.close();
                     }
                 }
             });
@@ -303,6 +434,7 @@
         
         $().w2popup('open', {
             title   : 'Choose tranlations source and destination',
+            name    : 'translationPopup',
             body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
             style   : 'padding: 15px 0px 0px 0px',
             width   : 500,
