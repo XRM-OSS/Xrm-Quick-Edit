@@ -178,6 +178,24 @@
         w2ui.grid.unlock();
     }
     
+    function LoadOptionSets (entityName) {
+        var entityMetadataId = entityMetadata[entityName];
+        
+        var request = {
+            entityName: "EntityDefinition", 
+            entityId: entityMetadataId, 
+            queryParams: "/Attributes/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$select=LogicalName&$expand=OptionSet"
+        };
+        
+        WebApiClient.Retrieve(request)
+            .then(function(response){
+                debugger;
+            })
+            .catch(function(error) {
+                alert(error)
+            });
+    }
+    
     function LoadEntityAttributes (entityName) {
         var entityMetadataId = entityMetadata[entityName];
         
@@ -475,6 +493,18 @@
             toolbar: {
                 items: [
                     { type: 'button', id: 'autoTranslate', text: 'Auto Translate' },
+                    { type: 'menu-radio', id: 'type', icon: 'fa-star',
+                        text: function (item) {
+                            var text = item.selected;
+                            var el   = this.get('type:' + item.selected);
+                            return 'Type: ' + el.text;
+                        },
+                        selected: 'attributes',
+                        items: [
+                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
+                            { id: 'options', text: 'Options', icon: 'fa-picture' }
+                        ]
+                    },
                     { type: 'menu-radio', id: 'entitySelect', icon: 'fa-star',
                         text: function (item) {
                             var text = item.selected;
