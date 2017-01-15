@@ -132,6 +132,13 @@
                 if (label.LanguageCode == change) {
                     label.Label = changes[change];
                     label.HasChanged = true;
+                    
+                    break;
+                }
+                
+                // Did not find label for this language
+                if (i === labels.length - 1) {
+                    labels.push({ LanguageCode: change, Label: changes[change] })
                 }
             }
         }
