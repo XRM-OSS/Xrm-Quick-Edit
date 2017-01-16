@@ -33,6 +33,17 @@
     
     var currentEntity = null;
     
+    function errorHandler(error) {
+        if(error.statusText) {
+            alert(error.statusText);
+        }
+        else {
+            alert(error);
+        }
+        
+        UnlockGrid();
+    }
+    
     /// Thanks to http://www.chaholl.com/archive/2013/05/07/iso-639-2-to-windows-lcid-mapping.aspx for the mappings
     function GetLanguageIsoByLcid (lcid) {
         if (!languageMappings) {
@@ -191,9 +202,7 @@
             .then(function(response){
                 debugger;
             })
-            .catch(function(error) {
-                alert(error)
-            });
+            .catch(errorHandler);
     }
     
     function LoadEntityAttributes (entityName) {
@@ -212,9 +221,7 @@
                 
                 FillTable();
             })
-            .catch(function(error) {
-               alert(error); 
-            });
+            .catch(errorHandler);
     }
     
     function GetAttributeById (id) {
@@ -293,11 +300,19 @@
             var update = updates[i];
             var url = entityUrl + update.MetadataId + ")";
             
-            var request = WebApiClient.SendRequest("PUT", url, update, [{key: "MSCRM.MergeLabels", value: "true"}]);
+            var request = {
+                method: "PUT", 
+                url: url, 
+                attribute: update, 
+                headers: [{key: "MSCRM.MergeLabels", value: "true"}]
+            };
             requests.push(request);
         }
         
-        Promise.all(requests)
+        Promise.resolve(requests)
+            .each(function(request) {
+                return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
+            })
             .then(function (response){
                 LockGrid("Publishing");
                 
@@ -308,12 +323,7 @@
                 
                 return LoadEntityAttributes(currentEntity);
             })
-            .then(function (response) {
-                UnlockGrid();
-            })
-            .catch(function (error) {
-                alert(error);
-            });
+            .catch(errorHandler);
     }
     
     function GetRecord (records, selector) {
@@ -415,15 +425,7 @@
                 AddTranslations(fromLcid, destLcid, updateRecords, responses);
                 UnlockGrid();
             })
-            .catch(function(error) {
-                if (error.statusText) {
-                    alert("Error: " + error.statusText);
-                }
-                else {
-                    alert("Error: " + error);
-                }
-                UnlockGrid();
-            });
+            .catch(errorHandler);
     }
     
     function ShowTranslationPrompt () {
@@ -625,8 +627,6 @@
             .then(function (){
                 w2ui.grid.unlock();
             })
-            .catch(function(error) {
-                alert(error.Message);
-            });
+            .catch(errorHandler);
     }
 } (window.XrmTranslator = window.XrmTranslator || {}));
