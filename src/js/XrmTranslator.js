@@ -357,8 +357,14 @@
                     continue;
                 }
                 
-                record["w2ui"] = {};
-                record.w2ui["changes"] = {};
+                if (!record.w2ui) {
+                    record["w2ui"] = {};
+                }
+                
+                if (!record.w2ui.changes) {
+                    record.w2ui["changes"] = {};
+                }
+                
                 record.w2ui.changes[destLcid] = CapitalizeFirstChar(translation);
                 
                 savable = true;
@@ -381,15 +387,27 @@
         var updateRecords = [];
         var translationRequests = [];
         
+        var fromIso = GetLanguageIsoByLcid(fromLcid);
+        var toIso = GetLanguageIsoByLcid(destLcid);
+        
+        if (!fromIso || !toIso) {
+            UnlockGrid();
+            
+            alert("Could not find source or target language mapping, source iso:" + fromIso + ", target iso: " + toIso);
+            
+            return;
+        }
+        
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             
-            if (record[destLcid] || (record.w2ui && record.w2ui.changes && record.w2ui.changes[destLcid])) {
+            // If original record had translation set and it was not cleared by pending changes, we skip this record
+            if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
                 continue;
             }
             
             updateRecords.push(record);
-            translationRequests.push(GetTranslation(GetLanguageIsoByLcid(fromLcid), GetLanguageIsoByLcid(destLcid), record[fromLcid]));
+            translationRequests.push(GetTranslation(fromIso, toIso, record[fromLcid]));
         }
         
         Promise.all(translationRequests)
@@ -398,7 +416,13 @@
                 UnlockGrid();
             })
             .catch(function(error) {
-                alert(error);
+                if (error.statusText) {
+                    alert("Error: " + error.statusText);
+                }
+                else {
+                    alert("Error: " + error);
+                }
+                UnlockGrid();
             });
     }
     
@@ -501,8 +525,8 @@
                         },
                         selected: 'attributes',
                         items: [
-                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
-                            { id: 'options', text: 'Options', icon: 'fa-picture' }
+                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' }
+                            //, { id: 'options', text: 'Options', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'menu-radio', id: 'entitySelect', icon: 'fa-star',
