@@ -108,7 +108,7 @@
         return translationApiUrl
             .replace("?from=[sourceLanguage]", "?from=" + fromLanguage)
             .replace("&dest=[destLanguage]", "&dest=" + destLanguage)
-            .replace("&phrase=[phrase]", "&phrase=" + phrase);
+            .replace("&phrase=[phrase]", "&phrase=" + encodeURIComponent(phrase));
     }
     
     function GetTranslation(fromLanguage, destLanguage, phrase) {
