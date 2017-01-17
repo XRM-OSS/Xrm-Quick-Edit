@@ -10,7 +10,7 @@ This is a beta, use at your own risk and export a backup solution before testing
 
 ## How to use
 After installing the solution, there will be a Translation Management Dashboard:
-![translationdashboard](https://cloud.githubusercontent.com/assets/4287938/21963574/d495b1d8-db3d-11e6-890f-563ca1efbf1a.PNG)
+![translationdashboard](https://cloud.githubusercontent.com/assets/4287938/22001408/53ac0992-dc45-11e6-8d19-940516221d9f.PNG)
 
 There will be a column in the translation grid for every language installed in the organization.
 Once the list of entities is loaded, select the one you want to translate.
