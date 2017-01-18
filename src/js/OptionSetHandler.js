@@ -36,14 +36,16 @@
         return id.substring(0, separatorIndex);
     }
     
-    function GetOptionValueUpdate (attribute, value, label) {
+    function GetOptionValueUpdate (attribute, value, labels) {
         if (!attribute.GlobalOptionSet && !attribute.OptionSet) {
             throw new Error("Either the global option set or the OptionSet have to be passed!");
         }
         
         var update = {
             Value: value,
-            Label: label,
+            Label: { 
+                LocalizedLabels: labels 
+            },
             MergeLabels: true
         };
         
@@ -73,16 +75,23 @@
                 var attribute = XrmTranslator.GetAttributeById (recordId);
                 var optionSetValue = parseInt(record.schemaName);
                 var changes = record.w2ui.changes;
+            
+                var labels = [];                
 
                 for (var change in changes) {
                     if (!changes.hasOwnProperty(change)) {
                         continue;
                     }
                     var label = { LanguageCode: change, Label: changes[change] };
-                    var update = GetOptionValueUpdate(attribute, optionSetValue, label);
-                    
-                    updates.push(update);
+                    labels.push(label);
                 }
+
+                if (labels.length < 1) {
+                    continue;
+                }
+
+                var update = GetOptionValueUpdate(attribute, optionSetValue, labels);    
+                updates.push(update);
             }
             
             if (record.w2ui && record.w2ui.children && record.w2ui.children.length > 0) {
@@ -172,25 +181,9 @@
         var records = XrmTranslator.GetGrid().records;        
         var updates = GetUpdates(records);
         
-        var requests = [];
-        var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")/Attributes(";
-        
-        for (var i = 0; i < updates.length; i++) {
-            var update = updates[i];
-            var url = entityUrl + update.MetadataId + ")";
-            
-            var request = {
-                method: "PUT", 
-                url: url, 
-                attribute: update, 
-                headers: [{key: "MSCRM.MergeLabels", value: "true"}]
-            };
-            requests.push(request);
-        }
-        
-        Promise.resolve(requests)
-            .each(function(request) {
-                return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
+        Promise.resolve(updates)
+            .each(function(payload) {
+                return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl() + "UpdateOptionValue", payload);
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
@@ -200,7 +193,7 @@
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
                 
-                return AttributeHandler.Load();
+                return OptionSetHandler.Load();
             })
             .catch(XrmTranslator.errorHandler);
     }
