@@ -113,9 +113,13 @@
             show: { 
                 toolbar: true,
                 footer: true,
-                toolbarSave: true
+                toolbarSave: true,
+                toolbarSearch: true
             },
             multiSearch: true,
+            searches: [
+                { field: 'schemaName', caption: 'Schema Name', type: 'text' }
+            ],
             columns: [
                 { field: 'schemaName', caption: 'Schema Name', size: '20%', sortable: true, resizable: true }
             ],

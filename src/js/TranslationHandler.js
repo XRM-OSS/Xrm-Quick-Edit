@@ -295,6 +295,7 @@
             var language = languages[i];
             
             grid.addColumn({ field: language, caption: language, size: columnWidth + "%", editable: { type: 'text' } });
+            grid.addSearch({ field: language, caption: language, type: 'text' });
         }
         
         return languages;
