@@ -117,7 +117,7 @@
             },
             multiSearch: true,
             columns: [
-                { field: 'schemaName', caption: 'Schema Name', size: '30%', sortable: true, resizable: true }
+                { field: 'schemaName', caption: 'Schema Name', size: '20%', sortable: true, resizable: true }
             ],
             onSave: function (event) {
                 currentHandler.Save();

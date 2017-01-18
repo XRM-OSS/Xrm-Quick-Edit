@@ -284,11 +284,17 @@
         
     TranslationHandler.FillLanguageCodes = function(languages) {
         availableLanguages = languages;
+        var grid = XrmTranslator.GetGrid();
+        
+        var languageCount = languages.length;
+        
+        // 100% full width, minus length of the schema name grid, divided by number of languages is space left for each language
+        var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / languageCount;
         
         for (var i = 0; i < languages.length; i++) {
             var language = languages[i];
             
-            XrmTranslator.GetGrid().addColumn({ field: language, caption: language, size: '120px', editable: { type: 'text' } });
+            grid.addColumn({ field: language, caption: language, size: columnWidth + "%", editable: { type: 'text' } });
         }
         
         return languages;
