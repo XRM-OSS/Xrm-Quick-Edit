@@ -116,9 +116,8 @@
                 toolbarSave: true
             },
             multiSearch: true,
-            columns: [                
-                { field: 'recid', caption: 'Metadata ID', size: '50px', sortable: true, resizable: true, hidden: true },
-                { field: 'schemaName', caption: 'Schema Name', size: '200px', sortable: true, resizable: true }
+            columns: [
+                { field: 'schemaName', caption: 'Schema Name', size: '30%', sortable: true, resizable: true }
             ],
             onSave: function (event) {
                 currentHandler.Save();

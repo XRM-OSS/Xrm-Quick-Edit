@@ -55,7 +55,7 @@
 
                 var child = {
                     recid: record.recid + "-" + option.Value,
-                    schemaName: attribute.LogicalName
+                    schemaName: option.Value
                 };
 
                 for (var k = 0; k < labels.length; k++) {
