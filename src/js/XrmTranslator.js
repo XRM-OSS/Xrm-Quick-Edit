@@ -106,6 +106,18 @@
         
         return null;
     }
+    
+    XrmTranslator.GetAttributeById = function(id) {
+        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
+            var attribute = XrmTranslator.metadata[i];
+            
+            if (attribute.MetadataId === id) {
+                return attribute;
+            }
+        }
+        
+        return null;
+    }
           
     function InitializeGrid (entities) {        
         $('#grid').w2grid({ 

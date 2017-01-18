@@ -49,42 +49,6 @@
         }
     }
     
-    function GetAttributeById (id) {
-        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
-            var attribute = XrmTranslator.metadata[i];
-            
-            if (attribute.MetadataId === id) {
-                return attribute;
-            }
-        }
-        
-        return null;
-    }
-    
-    function ApplyChanges(changes, labels) {
-        for (var change in changes) {
-            if (!changes.hasOwnProperty(change)) {
-                continue;
-            }
-            
-            for (var i = 0; i < labels.length; i++) {
-                var label = labels[i];
-                
-                if (label.LanguageCode == change) {
-                    label.Label = changes[change];
-                    label.HasChanged = true;
-                    
-                    break;
-                }
-                
-                // Did not find label for this language
-                if (i === labels.length - 1) {
-                    labels.push({ LanguageCode: change, Label: changes[change] })
-                }
-            }
-        }
-    }
-    
     function GetUpdates() {
         var records = XrmTranslator.GetGrid().records;
         
@@ -94,7 +58,7 @@
             var record = records[i];
             
             if (record.w2ui && record.w2ui.changes) {
-                var attribute = GetAttributeById (record.recid);
+                var attribute = XrmTranslator.GetAttributeById (record.recid);
                 var labels = attribute.DisplayName.LocalizedLabels;
                 
                 var changes = record.w2ui.changes;

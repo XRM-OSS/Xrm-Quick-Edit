@@ -24,6 +24,74 @@
 */
 (function (OptionSetHandler, undefined) {
     "use strict";
+    var idSeparator = "|";
+    
+    function GetRecordId (id) {
+        var separatorIndex = id.indexOf(idSeparator);
+        
+        if (separatorIndex === -1) {
+            return id;
+        }
+        
+        return id.substring(0, separatorIndex);
+    }
+    
+    function GetOptionValueUpdate (attribute, value, label) {
+        if (!attribute.GlobalOptionSet && !attribute.OptionSet) {
+            throw new Error("Either the global option set or the OptionSet have to be passed!");
+        }
+        
+        var update = {
+            Value: value,
+            Label: label,
+            MergeLabels: true
+        };
+        
+        if (attribute.GlobalOptionSet) {
+            update.OptionSetName = attribute.GlobalOptionSet.Name;
+        }
+        else{
+            var optionSet = attribute.OptionSet;
+            
+            update.EntityLogicalName = XrmTranslator.GetEntity().toLowerCase();
+            update.AttributeLogicalName = attribute.LogicalName;
+        }
+        
+        return update;
+    }
+
+    function GetUpdates(records, updates) {
+        if (!updates) {
+            updates = [];
+        }
+        
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            
+            if (record.w2ui && record.w2ui.changes) {
+                var recordId = GetRecordId(record.recid);
+                var attribute = XrmTranslator.GetAttributeById (recordId);
+                var optionSetValue = parseInt(record.schemaName);
+                var changes = record.w2ui.changes;
+
+                for (var change in changes) {
+                    if (!changes.hasOwnProperty(change)) {
+                        continue;
+                    }
+                    var label = { LanguageCode: change, Label: changes[change] };
+                    var update = GetOptionValueUpdate(attribute, optionSetValue, label);
+                    
+                    updates.push(update);
+                }
+            }
+            
+            if (record.w2ui && record.w2ui.children && record.w2ui.children.length > 0) {
+                GetUpdates(record.w2ui.children, updates);
+            }
+        }
+        
+        return updates;
+    }
     
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
@@ -35,6 +103,11 @@
             var attribute = XrmTranslator.metadata[i];
 
             var optionSet = attribute.OptionSet;
+            
+            if (!optionSet) {
+                optionSet = attribute.GlobalOptionSet;
+            }
+            
             var options = optionSet.Options;
             
             if (!options || options.length === 0) {
@@ -54,7 +127,7 @@
                 var labels = option.Label.LocalizedLabels;
 
                 var child = {
-                    recid: record.recid + "-" + option.Value,
+                    recid: record.recid + idSeparator + option.Value,
                     schemaName: option.Value
                 };
 
@@ -96,10 +169,11 @@
     OptionSetHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
         
-        var updates = XrmTranslator.GetUpdates();
+        var records = XrmTranslator.GetGrid().records;        
+        var updates = GetUpdates(records);
         
         var requests = [];
-        var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + entityMetadata[currentEntity] + ")/Attributes(";
+        var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")/Attributes(";
         
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
@@ -126,7 +200,7 @@
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
                 
-                return LoadEntityAttributes(currentEntity);
+                return AttributeHandler.Load();
             })
             .catch(XrmTranslator.errorHandler);
     }
