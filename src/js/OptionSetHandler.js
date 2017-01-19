@@ -62,10 +62,8 @@
         return update;
     }
 
-    function GetUpdates(records, updates) {
-        if (!updates) {
-            updates = [];
-        }
+    function GetUpdates(records) {
+        var updates = [];
         
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -92,10 +90,6 @@
 
                 var update = GetOptionValueUpdate(attribute, optionSetValue, labels);    
                 updates.push(update);
-            }
-            
-            if (record.w2ui && record.w2ui.children && record.w2ui.children.length > 0) {
-                GetUpdates(record.w2ui.children, updates);
             }
         }
         
