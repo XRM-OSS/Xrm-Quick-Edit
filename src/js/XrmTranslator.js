@@ -52,6 +52,9 @@
         else if (XrmTranslator.GetType() === "options") {
             currentHandler = OptionSetHandler;
         }
+        else if (XrmTranslator.GetType() === "forms") {
+            currentHandler = FormHandler;
+        }
     }
     
     XrmTranslator.errorHandler = function(error) {
@@ -163,7 +166,8 @@
                         selected: 'attributes',
                         items: [
                             { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
-                            { id: 'options', text: 'Options', icon: 'fa-picture' }
+                            { id: 'options', text: 'Options', icon: 'fa-picture' },
+                            { id: 'forms', text: 'Forms', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'button', id: 'load', text: 'Load' },

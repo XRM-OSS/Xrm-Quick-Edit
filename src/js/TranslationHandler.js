@@ -211,7 +211,7 @@
     }
     
     TranslationHandler.ShowTranslationPrompt = function() {
-        if (!w2ui.foo) {
+        if (!w2ui.languageSelection) {
             var languageLcids = [];
             
             for (var i = 0; i < availableLanguages.length; i++) {
@@ -267,10 +267,10 @@
             height  : 300, 
             showMax : true,
             onToggle: function (event) {
-                $(w2ui.foo.box).hide();
+                $(w2ui.languageSelection.box).hide();
                 event.onComplete = function () {
-                    $(w2ui.foo.box).show();
-                    w2ui.foo.resize();
+                    $(w2ui.languageSelection.box).show();
+                    w2ui.languageSelection.resize();
                 }
             },
             onOpen: function (event) {
