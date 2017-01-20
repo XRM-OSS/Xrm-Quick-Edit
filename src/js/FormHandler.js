@@ -96,14 +96,60 @@
         return updates;
     }
     
+    function CreateGridNode (node) {
+        if (!node) {
+            return null;
+        }
+        
+        return {
+            recid: node.id,
+            schemaName: node.id,
+            w2ui: { 
+                children: [] 
+            }
+        };
+    }
+    
+    function traverseTree (treeWalker, tree) {
+        // Dive down
+        var child = CreateGridNode(treeWalker.firstChild());
+        
+        if (!child) {
+            return;
+        }    
+        
+        // Push each first child per level
+        tree.push(child);        
+        traverseTree(treeWalker, child.w2ui.children);
+        
+        // We'll dive up level to level now and add all siblings
+        while (treeWalker.nextSibling()) {
+            var sibling = CreateGridNode(treeWalker.currentNode);            
+            tree.push(sibling);            
+            traverseTree(treeWalker, sibling.w2ui.children);
+        }
+
+        treeWalker.parentNode();
+    }
+
+    function ElementChecker (node) {
+        if (node.id && node.getElementsByTagName("labels").length > 0) {
+            return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+    }
+    
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
         
         var parser = new DOMParser();
         var formXml = parser.parseFromString(XrmTranslator.metadata.formxml, "text/xml");
-   
+        var treeWalker = document.createTreeWalker(formXml, NodeFilter.SHOW_ALL, ElementChecker, false);
+
         var records = [];
+    
+        traverseTree(treeWalker, records);
       
         grid.add(records);
         grid.unlock();
