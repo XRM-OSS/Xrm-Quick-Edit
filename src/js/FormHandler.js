@@ -101,9 +101,19 @@
             return null;
         }
         
+        var attributes = node.attributes;
+        var name = "";
+        
+        if (attributes["name"]) {
+            name = attributes["name"].value;
+        }
+        else {
+            name = node.tagName + "-" + attributes["id"].value;
+        }        
+        
         return {
             recid: node.id,
-            schemaName: node.id,
+            schemaName: name,
             w2ui: { 
                 children: [] 
             }
