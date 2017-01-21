@@ -352,15 +352,22 @@
             entityId: XrmTranslator.metadata.formid,
             entity: update
         })
-        //.then(function (response){
-        //    XrmTranslator.LockGrid("Publishing");
-        //    
-        //    return XrmTranslator.Publish();
-        //})
+        .then(function (response){
+            XrmTranslator.LockGrid("Publishing");
+            
+            return XrmTranslator.Publish();
+        })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
             
-            return FormHandler.Load();
+            return WebApiClient.Retrieve({
+                entityName: "systemform",
+                entityId: XrmTranslator.metadata.formid
+            });
+        })
+        .then(function (response) {
+            XrmTranslator.metadata = response;                        
+            FillTable();
         })
         .catch(XrmTranslator.errorHandler);
     }
