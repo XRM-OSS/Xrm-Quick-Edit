@@ -39,8 +39,10 @@
         return NodeFilter.FILTER_SKIP;
     }
     
-    function CreateTreeWalker(elementFilter) {
-        var formXml = GetParsedForm();
+    function CreateTreeWalker(elementFilter, formXml) {
+        if (!formXml) {
+            formXml = GetParsedForm();
+        }
         var treeWalker = document.createTreeWalker(formXml, NodeFilter.SHOW_ALL, elementFilter, false);
         
         return treeWalker;
@@ -266,8 +268,8 @@
         return NodeFilter.FILTER_SKIP;
     }
     
-    function GetById (id) {
-        var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }));
+    function GetById (id, formXml) {
+        var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }), formXml);
         
         return treeWalker.nextNode();
     }
@@ -283,11 +285,11 @@
                     label.attributes["description"].value = update.Text;
                 }
                 // We did not find it
-                else if (j === labels.length - 1) {
+                else if (j === labels.children.length - 1) {
                     var newLabel = formXml.createElement("label");
                     
-                    newLabel.setAttribute("languagecode", update.LanguageCode);
                     newLabel.setAttribute("description", update.Text);
+                    newLabel.setAttribute("languagecode", update.LanguageCode);
                     
                     labels.appendChild(newLabel);
                 }
@@ -305,7 +307,7 @@
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
             
-            var node = GetById(update.id);
+            var node = GetById(update.id, formXml);
             var labels = GetLabels(node);
             
             ApplyLabelUpdates(labels, update.labels, formXml);
@@ -350,11 +352,11 @@
             entityId: XrmTranslator.metadata.formid,
             entity: update
         })
-        .then(function (response){
-            XrmTranslator.LockGrid("Publishing");
-            
-            return XrmTranslator.Publish();
-        })
+        //.then(function (response){
+        //    XrmTranslator.LockGrid("Publishing");
+        //    
+        //    return XrmTranslator.Publish();
+        //})
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
             
