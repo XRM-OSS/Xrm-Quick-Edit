@@ -96,6 +96,35 @@
         return updates;
     }
     
+    function AttachLabels(node, gridNode) {
+        var labelsNode = null;
+        var children = node.children;
+        
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            
+            if (child && child.tagName === "labels") {
+                labelsNode = child;
+                break;
+            }
+        }
+        
+        if (!labelsNode) {
+            return;
+        }
+        
+        var labels = labelsNode.children;
+        
+        for (var i = 0; i < labels.length; i++) {
+            var label = labels[i];
+            
+            var text = label.attributes["description"].value;
+            var languageCode = label.attributes["languagecode"].value;
+            
+            gridNode[languageCode] = text;
+        }
+    }
+    
     function CreateGridNode (node) {
         if (!node) {
             return null;
@@ -108,16 +137,21 @@
             name = attributes["name"].value;
         }
         else {
-            name = node.tagName + "-" + attributes["id"].value;
+            // var nodeid =  attributes["id"].value;
+            name = node.tagName;
         }        
         
-        return {
+        var gridNode = {
             recid: node.id,
             schemaName: name,
             w2ui: { 
                 children: [] 
             }
         };
+        
+        AttachLabels(node, gridNode);
+        
+        return gridNode;
     }
     
     function traverseTree (treeWalker, tree) {
