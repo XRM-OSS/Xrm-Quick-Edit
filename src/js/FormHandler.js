@@ -326,7 +326,7 @@
         
         var request = {
             entityName: "systemform", 
-            queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "'"
+            queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
         
         WebApiClient.Retrieve(request)
