@@ -24,42 +24,48 @@
 */
 (function (FormHandler, undefined) {
     "use strict";
-    var idSeparator = "|";
     
-    function GetRecordId (id) {
-        var separatorIndex = id.indexOf(idSeparator);
+    function GetParsedForm () {
+        var parser = new DOMParser();
+        var formXml = parser.parseFromString(XrmTranslator.metadata.formxml, "text/xml");
         
-        if (separatorIndex === -1) {
-            return id;
-        }
-        
-        return id.substring(0, separatorIndex);
+        return formXml;
     }
     
-    function GetOptionValueUpdate (attribute, value, labels) {
-        if (!attribute.GlobalOptionSet && !attribute.OptionSet) {
-            throw new Error("Either the global option set or the OptionSet have to be passed!");
+    function NodesWithIdAndLabels (node) {
+        if (node.id && node.getElementsByTagName("labels").length > 0) {
+            return NodeFilter.FILTER_ACCEPT;
         }
+        return NodeFilter.FILTER_SKIP;
+    }
+    
+    function CreateTreeWalker(elementFilter) {
+        var formXml = GetParsedForm();
+        var treeWalker = document.createTreeWalker(formXml, NodeFilter.SHOW_ALL, elementFilter, false);
         
-        var update = {
-            Value: value,
-            Label: { 
-                LocalizedLabels: labels 
-            },
-            MergeLabels: true
-        };
+        return treeWalker;
+    }
+    
+    function TraverseTree (treeWalker, tree) {
+        // Dive down
+        var child = CreateGridNode(treeWalker.firstChild());
         
-        if (attribute.GlobalOptionSet) {
-            update.OptionSetName = attribute.GlobalOptionSet.Name;
+        if (!child) {
+            return;
+        }    
+        
+        // Push each first child per level
+        tree.push(child);        
+        TraverseTree(treeWalker, child.w2ui.children);
+        
+        // We'll dive up level to level now and add all siblings
+        while (treeWalker.nextSibling()) {
+            var sibling = CreateGridNode(treeWalker.currentNode);            
+            tree.push(sibling);            
+            TraverseTree(treeWalker, sibling.w2ui.children);
         }
-        else{
-            var optionSet = attribute.OptionSet;
-            
-            update.EntityLogicalName = XrmTranslator.GetEntity().toLowerCase();
-            update.AttributeLogicalName = attribute.LogicalName;
-        }
-        
-        return update;
+
+        treeWalker.parentNode();
     }
 
     function GetUpdates(records) {
@@ -69,9 +75,6 @@
             var record = records[i];
             
             if (record.w2ui && record.w2ui.changes) {
-                var recordId = GetRecordId(record.recid);
-                var attribute = XrmTranslator.GetAttributeById (recordId);
-                var optionSetValue = parseInt(record.schemaName);
                 var changes = record.w2ui.changes;
             
                 var labels = [];                
@@ -80,7 +83,7 @@
                     if (!changes.hasOwnProperty(change)) {
                         continue;
                     }
-                    var label = { LanguageCode: change, Label: changes[change] };
+                    var label = { LanguageCode: change, Text: changes[change] };
                     labels.push(label);
                 }
 
@@ -88,15 +91,17 @@
                     continue;
                 }
 
-                var update = GetOptionValueUpdate(attribute, optionSetValue, labels);    
-                updates.push(update);
+                updates.push({
+                    id: record.recid,
+                    labels: labels
+                });
             }
         }
         
         return updates;
     }
     
-    function AttachLabels(node, gridNode) {
+    function GetLabels(node) {
         var labelsNode = null;
         var children = node.children;
         
@@ -109,14 +114,18 @@
             }
         }
         
-        if (!labelsNode) {
+        return labelsNode;
+    }
+    
+    function AttachLabels(node, gridNode) {
+        var labels = GetLabels(node);
+        
+        if (!labels) {
             return;
         }
         
-        var labels = labelsNode.children;
-        
-        for (var i = 0; i < labels.length; i++) {
-            var label = labels[i];
+        for (var i = 0; i < labels.children.length; i++) {
+            var label = labels.children[i];
             
             var text = label.attributes["description"].value;
             var languageCode = label.attributes["languagecode"].value;
@@ -154,46 +163,14 @@
         return gridNode;
     }
     
-    function traverseTree (treeWalker, tree) {
-        // Dive down
-        var child = CreateGridNode(treeWalker.firstChild());
-        
-        if (!child) {
-            return;
-        }    
-        
-        // Push each first child per level
-        tree.push(child);        
-        traverseTree(treeWalker, child.w2ui.children);
-        
-        // We'll dive up level to level now and add all siblings
-        while (treeWalker.nextSibling()) {
-            var sibling = CreateGridNode(treeWalker.currentNode);            
-            tree.push(sibling);            
-            traverseTree(treeWalker, sibling.w2ui.children);
-        }
-
-        treeWalker.parentNode();
-    }
-
-    function ElementChecker (node) {
-        if (node.id && node.getElementsByTagName("labels").length > 0) {
-            return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_SKIP;
-    }
-    
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
-        
-        var parser = new DOMParser();
-        var formXml = parser.parseFromString(XrmTranslator.metadata.formxml, "text/xml");
-        var treeWalker = document.createTreeWalker(formXml, NodeFilter.SHOW_ALL, ElementChecker, false);
 
         var records = [];
-    
-        traverseTree(treeWalker, records);
+        
+        var treeWalker = CreateTreeWalker(NodesWithIdAndLabels);
+        TraverseTree(treeWalker, records);
       
         grid.add(records);
         grid.unlock();
@@ -282,6 +259,65 @@
         });
     }
     
+    function IdFilter (node) {
+        if (node.id == this.id) {
+            return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+    }
+    
+    function GetById (id) {
+        var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }));
+        
+        return treeWalker.nextNode();
+    }
+    
+    function ApplyLabelUpdates (labels, updates, formXml) {
+        for (var i = 0; i < updates.length; i++) {
+            var update = updates[i];
+            
+            for (var j = 0; j < labels.children.length; j++) {
+                var label = labels.children[j];
+                
+                if (update.LanguageCode === label.attributes["languagecode"].value) {
+                    label.attributes["description"].value = update.Text;
+                }
+                // We did not find it
+                else if (j === labels.length - 1) {
+                    var newLabel = formXml.createElement("label");
+                    
+                    newLabel.setAttribute("languagecode", update.LanguageCode);
+                    newLabel.setAttribute("description", update.Text);
+                    
+                    labels.appendChild(newLabel);
+                }
+            }
+        }
+    }
+    
+    function SerializeXml(formXml) {
+        var serializer = new XMLSerializer();
+        
+        return serializer.serializeToString(formXml);
+    }
+    
+    function ApplyUpdates(updates, formXml) {
+        for (var i = 0; i < updates.length; i++) {
+            var update = updates[i];
+            
+            var node = GetById(update.id);
+            var labels = GetLabels(node);
+            
+            ApplyLabelUpdates(labels, update.labels, formXml);
+        }
+        
+        var serialized = SerializeXml(formXml);
+        
+        return {
+            formxml: serialized
+        };
+    }
+    
     FormHandler.Load = function () {
         var entityName = XrmTranslator.GetEntity();
         var entityMetadataId = XrmTranslator.entityMetadata[entityName];
@@ -303,23 +339,27 @@
     FormHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
         
-        var records = XrmTranslator.GetGrid().records;        
+        var records = XrmTranslator.GetGrid().records;
+        var formXml = GetParsedForm();
         var updates = GetUpdates(records);
         
-        Promise.resolve(updates)
-            .each(function(payload) {
-                return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl() + "UpdateOptionValue", payload);
-            })
-            .then(function (response){
-                XrmTranslator.LockGrid("Publishing");
-                
-                return XrmTranslator.Publish();
-            })
-            .then(function (response) {
-                XrmTranslator.LockGrid("Reloading");
-                
-                return FormHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+        var update = ApplyUpdates(updates, formXml);
+        
+        WebApiClient.Update({
+            entityName: "systemform",
+            entityId: XrmTranslator.metadata.formid,
+            entity: update
+        })
+        .then(function (response){
+            XrmTranslator.LockGrid("Publishing");
+            
+            return XrmTranslator.Publish();
+        })
+        .then(function (response) {
+            XrmTranslator.LockGrid("Reloading");
+            
+            return FormHandler.Load();
+        })
+        .catch(XrmTranslator.errorHandler);
     }
 } (window.FormHandler = window.FormHandler || {}));
