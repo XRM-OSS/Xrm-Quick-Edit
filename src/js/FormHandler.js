@@ -329,11 +329,26 @@
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
         
-        WebApiClient.Retrieve(request)
-            .then(function(response){
-                var forms = response.value;
-                
-                ShowFormSelection(forms);
+        var languages = XrmTranslator.installedLanguages.LocaleIds;
+        var userLanguage = XrmTranslator.userSettings.uilanguageid;
+        var forms = [];
+
+        Promise.resolve(languages)
+            .each(function(language) {
+                return WebApiClient.Update({
+                    overriddenSetName: "usersettingscollection",
+                    entityId: XrmTranslator.userId,
+                    entity: { uilanguageid: language }
+                })
+                .then(function() {
+                    WebApiClient.Retrieve(request)
+                        .then(function(response){
+                            forms.push({ languageCode: language, forms: response.value });
+                        })
+                });
+            })
+            .then(function(responses) {
+                debugger;            
             })
             .catch(XrmTranslator.errorHandler);
     }
