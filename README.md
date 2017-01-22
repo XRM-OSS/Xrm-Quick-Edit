@@ -2,7 +2,7 @@
 
 ## Purpose
 This is a tool that eases adding translations for CRM.
-It supports changing of existing translations and adding of new translations, for now only for field labels.
+It supports changing of existing translations and adding of new translations.
 
 There is an automated translation feature for missing labels, that tries to get a translation using the free Glosbe translation API.
 
@@ -26,8 +26,11 @@ Currently the following parts can be translated:
 ### OptionSet Values
 ![optionsettranslation](https://cloud.githubusercontent.com/assets/4287938/22116927/58ebb798-de72-11e6-97b2-fff3327acc38.PNG)
 
-## Next steps
-Next steps are adding options for translating other CRM parts (such as option set values), too.
+### System Forms
+![formtranslator](https://cloud.githubusercontent.com/assets/4287938/22186986/dc2bcfd8-e0fe-11e6-9f86-b9b61ddfb8dc.PNG)
+
+Note regarding form translations: Unfortunately the CRM only returns the current user's language labels when retrieving a system form. Other language labels, even if present, are not returned. Therefore the dashboard changes the user language to each installed language and retrieves the form, for being able to display all labels. After having retrieved all of the forms, your user language is restored to your initial value again.
+So please note that you should not abort loading of a form, as you might end up with a differnt language id (which you can of course just switch back in your options).
 
 ## Tools used
 I used [jQuery](https://github.com/jquery/jquery) and [w2ui](https://github.com/vitmalina/w2ui) for working with the grid.
