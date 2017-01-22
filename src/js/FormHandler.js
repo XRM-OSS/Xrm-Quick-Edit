@@ -25,9 +25,12 @@
 (function (FormHandler, undefined) {
     "use strict";
     
-    function GetParsedForm () {
+    FormHandler.selectedForms = null;
+    FormHandler.lastId = null;
+    
+    function GetParsedForm (form) {
         var parser = new DOMParser();
-        var formXml = parser.parseFromString(XrmTranslator.metadata.formxml, "text/xml");
+        var formXml = parser.parseFromString(form.formxml, "text/xml");
         
         return formXml;
     }
@@ -39,9 +42,9 @@
         return NodeFilter.FILTER_SKIP;
     }
     
-    function CreateTreeWalker(elementFilter, formXml) {
+    function CreateTreeWalker(elementFilter, form, formXml) {
         if (!formXml) {
-            formXml = GetParsedForm();
+            formXml = GetParsedForm(form);
         }
         var treeWalker = document.createTreeWalker(formXml, NodeFilter.SHOW_ALL, elementFilter, false);
         
@@ -162,6 +165,11 @@
         
         AttachLabels(node, gridNode);
         
+        for (var i = 0; i < FormHandler.selectedForms.length; i++) {
+            var node = GetById(node.id, FormHandler.selectedForms[i]);
+            AttachLabels(node, gridNode);
+        }
+        
         return gridNode;
     }
     
@@ -171,19 +179,60 @@
 
         var records = [];
         
-        var treeWalker = CreateTreeWalker(NodesWithIdAndLabels);
-        TraverseTree(treeWalker, records);
-      
+        var treeWalker = CreateTreeWalker(NodesWithIdAndLabels, XrmTranslator.metadata);
+        TraverseTree(treeWalker, records);        
+        
         grid.add(records);
         grid.unlock();
     }
     
-    function ShowFormSelection (forms) {
+    function GetUserLanguageForm (forms) {        
+        for (var i = 0; i < forms.length; i++) {
+            if (forms[i].languageCode === XrmTranslator.userSettings.uilanguageid) {
+                return forms[i];
+            }
+        }
+        
+        return null;
+    }
+    
+    function ProcessSelection(formId, formsByLanguage) {         
+        var userLanguageForms = GetUserLanguageForm(formsByLanguage).forms.value;
+    
+        for (var i = 0; i < userLanguageForms.length; i++) {
+            var languageForm = userLanguageForms[i];
+            
+            if (languageForm.formid === formId) {
+                XrmTranslator.metadata = languageForm;
+                break;
+            }
+        }
+        
+        FormHandler.selectedForms = [];
+        for (var i = 0; i < formsByLanguage.length; i++) {
+            var languageForms = formsByLanguage[i];
+            
+            for (var j = 0; j < languageForms.forms.value.length; j++) {
+                var languageForm = languageForms.forms.value[j];
+                
+                if (languageForm.formid === formId) {
+                    FormHandler.selectedForms.push(languageForm);
+                    break;
+                }
+            }
+        }
+
+        FillTable();
+    }
+    
+    function ShowFormSelection (formsByLanguage) {
         if (!w2ui.formSelection) {
+            var userLanguageForms = GetUserLanguageForm(formsByLanguage).forms.value;
+            
             var formItems = [];
             
-            for (var i = 0; i < forms.length; i++) {
-                var form = forms[i];
+            for (var i = 0; i < userLanguageForms.length; i++) {
+                var form = userLanguageForms[i];
                 
                 formItems.push({
                     id: form.formid, 
@@ -208,24 +257,13 @@
                     '    <button class="w2ui-btn" name="ok">Ok</button>'+
                     '</div>',
                 fields: [
-                    { field: 'formSelection', type: 'list', required: true, options: { items: formItems } }
+                    { field: 'formSelection', type: 'list', required: true, options: { items: formItems }, html: {attr: 'style="width: 80%"'} }
                 ],
                 actions: {
                     "ok": function () { 
                         this.validate(); 
                         
-                        var selectedForm = null;
-                        for (var i = 0; i < forms.length; i++) {
-                            var form = forms[i];
-                            
-                            if (form.formid === this.record.formSelection.id) {
-                                selectedForm = form;
-                                break;
-                            }
-                        }
-                        
-                        XrmTranslator.metadata = selectedForm;                        
-                        FillTable();
+                        ProcessSelection(this.record.formSelection.id, formsByLanguage);
                         
                         w2popup.close();
                     },
@@ -268,8 +306,8 @@
         return NodeFilter.FILTER_SKIP;
     }
     
-    function GetById (id, formXml) {
-        var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }), formXml);
+    function GetById (id, form, formXml) {
+        var treeWalker = CreateTreeWalker(IdFilter.bind({ id: id }), form, formXml);
         
         return treeWalker.nextNode();
     }
@@ -303,11 +341,11 @@
         return serializer.serializeToString(formXml);
     }
     
-    function ApplyUpdates(updates, formXml) {
+    function ApplyUpdates(updates, form, formXml) {
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
             
-            var node = GetById(update.id, formXml);
+            var node = GetById(update.id, form, formXml);
             var labels = GetLabels(node);
             
             ApplyLabelUpdates(labels, update.labels, formXml);
@@ -324,43 +362,78 @@
         var entityName = XrmTranslator.GetEntity();
         var entityMetadataId = XrmTranslator.entityMetadata[entityName];
         
-        var request = {
+        var formRequest = {
             entityName: "systemform", 
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
         
         var languages = XrmTranslator.installedLanguages.LocaleIds;
-        var userLanguage = XrmTranslator.userSettings.uilanguageid;
+        var initialLanguage = XrmTranslator.userSettings.uilanguageid;
         var forms = [];
+        var requests = [];
+        
+        for (var i = 0; i < languages.length; i++) {
+            requests.push({
+                action: "Update",
+                language: languages[i]
+            });
+            
+            requests.push({
+                action: "Retrieve",
+                language: languages[i]
+            });
+        }
+        
+        requests.push({
+            action: "Update",
+            language: initialLanguage
+        });
 
-        Promise.resolve(languages)
-            .each(function(language) {
+        Promise.reduce(requests, function(total, request){
+            if (request.action === "Update") {
                 return WebApiClient.Update({
                     overriddenSetName: "usersettingscollection",
                     entityId: XrmTranslator.userId,
-                    entity: { uilanguageid: language }
+                    entity: { uilanguageid: request.language }
                 })
-                .then(function() {
-                    WebApiClient.Retrieve(request)
-                        .then(function(response){
-                            forms.push({ languageCode: language, forms: response.value });
-                        })
+                .then(function(response) {
+                    return total;
                 });
-            })
-            .then(function(responses) {
-                debugger;            
-            })
-            .catch(XrmTranslator.errorHandler);
+            }
+            else if (request.action === "Retrieve") {
+                return Promise.props({
+                    forms: WebApiClient.Retrieve(formRequest),
+                    languageCode: request.language
+                })
+                .then(function (response) {
+                    total.push(response);
+                    
+                    return total;
+                }); 
+            }
+        }, [])
+        .then(function(responses) {
+            if (FormHandler.lastId) {
+                ProcessSelection(FormHandler.lastId, responses);
+                FormHandler.lastId = null;
+            }
+            else {
+                ShowFormSelection(responses);
+            }
+        })
+        .catch(XrmTranslator.errorHandler);
     }
     
     FormHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
         
         var records = XrmTranslator.GetGrid().records;
-        var formXml = GetParsedForm();
+        var formXml = GetParsedForm(XrmTranslator.metadata);
         var updates = GetUpdates(records);
         
-        var update = ApplyUpdates(updates, formXml);
+        var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
+        
+        FormHandler.lastId = XrmTranslator.metadata.formid;
         
         WebApiClient.Update({
             entityName: "systemform",
@@ -373,16 +446,7 @@
             return XrmTranslator.Publish();
         })
         .then(function (response) {
-            XrmTranslator.LockGrid("Reloading");
-            
-            return WebApiClient.Retrieve({
-                entityName: "systemform",
-                entityId: XrmTranslator.metadata.formid
-            });
-        })
-        .then(function (response) {
-            XrmTranslator.metadata = response;                        
-            FillTable();
+            FormHandler.Load()
         })
         .catch(XrmTranslator.errorHandler);
     }
