@@ -30,6 +30,11 @@
     
     XrmTranslator.entity = null;
     XrmTranslator.type = null;
+
+    // We need those for the FormHandleer, uilanguageid is current user language, formXml only contains labels for this locale by default
+    XrmTranslator.userId = null;
+    XrmTranslator.userSettings = null;
+    XrmTranslator.installedLanguages = null;
     
     var currentHandler = null;
     
@@ -221,21 +226,43 @@
 
         return WebApiClient.Retrieve(request);
     }
+
+    function GetUserId() {
+        return WebApiClient.SendRequest("GET", WebApiClient.GetApiUrl() + "WhoAmI");
+    }
     
+    function GetUserSettings(userId) {
+        return WebApiClient.Retrieve({
+            overriddenSetName: "usersettingscollection", 
+            entityId: userId
+        });
+    }
+
     XrmTranslator.Initialize = function() {
         InitializeGrid(); 
         
-        GetEntities()
-            .then(function(response){
+        GetUserId()
+            .then(function (response) {
+                XrmTranslator.userId = response.UserId;
+
+                return GetUserSettings(XrmTranslator.userId);
+            })
+            .then(function (response) {
+                XrmTranslator.userSettings = response;
+    
+                return GetEntities();
+            })
+            .then(function(response) {
                 return FillEntitySelector(response.value);
             })
-            .then(function (){
+            .then(function () {
                 return TranslationHandler.GetAvailableLanguages();
             })
             .then(function(languages) {
+                XrmTranslator.installedLanguages = languages;
                 return TranslationHandler.FillLanguageCodes(languages.LocaleIds);
             })
-            .then(function (){
+            .then(function () {
                 XrmTranslator.UnlockGrid();
             })
             .catch(XrmTranslator.errorHandler);
