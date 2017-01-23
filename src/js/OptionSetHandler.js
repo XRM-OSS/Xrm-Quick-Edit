@@ -74,6 +74,10 @@
                 var optionSetValue = parseInt(record.schemaName);
                 var changes = record.w2ui.changes;
             
+                if (!optionSetValue) {
+                    continue;
+                }
+            
                 var labels = [];                
 
                 for (var change in changes) {
@@ -174,6 +178,12 @@
         
         var records = XrmTranslator.GetGrid().records;        
         var updates = GetUpdates(records);
+        
+        if (!updates || updates.length === 0) {
+            XrmTranslator.LockGrid("Reloading");
+                
+            return OptionSetHandler.Load();
+        }
         
         Promise.resolve(updates)
             .each(function(payload) {
