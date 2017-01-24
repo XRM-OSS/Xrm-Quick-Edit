@@ -26,6 +26,7 @@
     "use strict";
     
     FormHandler.selectedForms = null;
+    FormHandler.formsByLanguage = null;
     FormHandler.lastId = null;
     
     function GetParsedForm (form) {
@@ -196,7 +197,8 @@
         return null;
     }
     
-    function ProcessSelection(formId, formsByLanguage) {         
+    function ProcessSelection(formId) {         
+        var formsByLanguage = FormHandler.formsByLanguage;
         var userLanguageForms = GetUserLanguageForm(formsByLanguage).forms.value;
     
         for (var i = 0; i < userLanguageForms.length; i++) {
@@ -225,21 +227,10 @@
         FillTable();
     }
     
-    function ShowFormSelection (formsByLanguage) {
-        if (!w2ui.formSelection) {
-            var userLanguageForms = GetUserLanguageForm(formsByLanguage).forms.value;
-            
-            var formItems = [];
-            
-            for (var i = 0; i < userLanguageForms.length; i++) {
-                var form = userLanguageForms[i];
-                
-                formItems.push({
-                    id: form.formid, 
-                    text: form.name + " - " + form.description
-                });
-            }
-            
+    function ShowFormSelection () {
+        var formsByLanguage = FormHandler.formsByLanguage;
+        
+        if (!w2ui.formSelectionPrompt) {            
             $().w2form({
                 name: 'formSelectionPrompt',
                 style: 'border: 0px; background-color: transparent;',
@@ -257,13 +248,13 @@
                     '    <button class="w2ui-btn" name="ok">Ok</button>'+
                     '</div>',
                 fields: [
-                    { field: 'formSelection', type: 'list', required: true, options: { items: formItems }, html: {attr: 'style="width: 80%"'} }
+                    { field: 'formSelection', type: 'list', required: true, html: {attr: 'style="width: 80%"'} }
                 ],
                 actions: {
                     "ok": function () { 
                         this.validate(); 
                         
-                        ProcessSelection(this.record.formSelection.id, formsByLanguage);
+                        ProcessSelection(this.record.formSelection.id);
                         
                         w2popup.close();
                     },
@@ -274,6 +265,22 @@
                 }
             });
         }
+        
+        var userLanguageForms = GetUserLanguageForm(formsByLanguage).forms.value;
+            
+        var formItems = [];
+        
+        for (var i = 0; i < userLanguageForms.length; i++) {
+            var form = userLanguageForms[i];
+            
+            formItems.push({
+                id: form.formid, 
+                text: form.name + " - " + form.description
+            });
+        }
+        
+        w2ui.formSelectionPrompt.record.formSelection = null;
+        w2ui.formSelectionPrompt.fields[0].options = { items: formItems };
         
         $().w2popup('open', {
             title   : 'Choose Form',
@@ -413,12 +420,14 @@
             }
         }, [])
         .then(function(responses) {
+            FormHandler.formsByLanguage = responses;
+            
             if (FormHandler.lastId) {
-                ProcessSelection(FormHandler.lastId, responses);
+                ProcessSelection(FormHandler.lastId);
                 FormHandler.lastId = null;
             }
             else {
-                ShowFormSelection(responses);
+                ShowFormSelection();
             }
         })
         .catch(XrmTranslator.errorHandler);
