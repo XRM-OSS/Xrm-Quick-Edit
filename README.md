@@ -32,6 +32,13 @@ Currently the following parts can be translated:
 Note regarding form translations: Unfortunately the CRM only returns the current user's language labels when retrieving a system form. Other language labels, even if present, are not returned. Therefore the dashboard changes the user language to each installed language and retrieves the form, for being able to display all labels. After having retrieved all of the forms, your user language is restored to your initial value again.
 So please note that you should not abort loading of a form, as you might end up with a differnt language id (which you can of course just switch back in your options).
 
+## System requirements
+### CRM Version
+This solution is available for CRM 2016 >= 8.0, since it requires the Web API for operating.
+
+### User permissions
+This tool uses a wide range of metadata operations, your user should best be system administrator.
+
 ## Tools used
 I used [jQuery](https://github.com/jquery/jquery) and [w2ui](https://github.com/vitmalina/w2ui) for working with the grid.
 Requests to the CRM are sent using my [Web API Client](https://github.com/DigitalFlow/Xrm-WebApi-Client).
