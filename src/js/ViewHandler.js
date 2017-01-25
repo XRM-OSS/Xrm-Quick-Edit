@@ -25,22 +25,26 @@
 (function (ViewHandler, undefined) {
     "use strict";
     
-    function ApplyChanges(recid, changes, updates) {
+    function ApplyChanges(changes, labels) {
         for (var change in changes) {
             if (!changes.hasOwnProperty(change)) {
                 continue;
             }
             
-            if (!updates[change]) {
-                updates[change] = [{
-                    recid: recid,
-                    entity: { name: changes[change] }
-                }];
-            } else {
-                updates[change].push({
-                    recid: recid,
-                    entity: { name: changes[change] }
-                });
+            for (var i = 0; i < labels.length; i++) {
+                var label = labels[i];
+                
+                if (label.LanguageCode == change) {
+                    label.Label = changes[change];
+                    label.HasChanged = true;
+                    
+                    break;
+                }
+                
+                // Did not find label for this language
+                if (i === labels.length - 1) {
+                    labels.push({ LanguageCode: change, Label: changes[change] })
+                }
             }
         }
     }
@@ -48,15 +52,19 @@
     function GetUpdates() {
         var records = XrmTranslator.GetGrid().records;
         
-        var updates = {};
+        var updates = [];
         
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             
-            if (record.w2ui && record.w2ui.changes) {                
+            if (record.w2ui && record.w2ui.changes) {
+                var attribute = XrmTranslator.GetAttributeByProperty("recid", record.recid);
+                var labels = attribute.labels.Label.LocalizedLabels;
+                
                 var changes = record.w2ui.changes;
                 
-                ApplyChanges(record.recid, changes, updates);
+                ApplyChanges(changes, labels);
+                updates.push(attribute);
             }
         }
         
@@ -69,24 +77,24 @@
         
         var records = [];
         
-        if (XrmTranslator.metadata.length < 1) {
-            return;
-        }
-        
-        var views = XrmTranslator.metadata[0].views.value;
-        
-        for (var i = 0; i < views.length; i++) {
-            var view = views[i];
+        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
+            var view = XrmTranslator.metadata[i];
+
+            var displayNames = view.labels.Label.LocalizedLabels;
+            
+            if (!displayNames || displayNames.length === 0) {
+                continue;
+            }
             
             var record = {
-               recid: view.savedqueryid,
+               recid: view.recid,
                schemaName: "View"
             };
-
-            // Iterate through all languages            
-            for (var j = 0; j < XrmTranslator.metadata.length; j++) {
-                var viewByLanguage = XrmTranslator.metadata[j];                
-                record[viewByLanguage.languageCode] = viewByLanguage.views.value[i].name;
+            
+            for (var j = 0; j < displayNames.length; j++) {
+                var displayName = displayNames[j];
+                
+                record[displayName.LanguageCode.toString()] = displayName.Label;
             }
             
             records.push(record);
@@ -127,11 +135,6 @@
                 
                 return Promise.all(requests);
             })
-            .then(function (response) {
-                total.push(response);
-                
-                return total;
-            })
             .then(function(responses) {
                     var views = responses;
                     XrmTranslator.metadata = views;
@@ -147,54 +150,19 @@
         var updates = GetUpdates();
         var requests = [];
         
-        var updateRequest = {
-            entityName: "savedquery"
-        };
-        
-        var languages = XrmTranslator.installedLanguages.LocaleIds;
-        var initialLanguage = XrmTranslator.userSettings.uilanguageid;
-        var requests = [];
-        
-        for (var update in updates) {
-            if (!updates.hasOwnProperty(update)) {
-                continue;
-            }
+        for (var i = 0; i < updates.length; i++) {
+            var update = updates[i];
             
-            requests.push({
-                action: "SetLanguage",
-                language: parseInt(update)
-            });
-            
-            for (var i = 0; i < updates[update].length; i++) {
-                requests.push({
-                    action: "Update",
-                    recid: updates[update][i].recid,
-                    entity: updates[update][i].entity
-                });
-            }
+            var request = WebApiClient
+                .SendRequest("GET", WebApiClient.GetApiUrl() 
+                + "SetLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)?@p1={'@odata.id':'savedqueries(" + view.savedqueryid + ")'}&@p2='name'&@p3=true");
+           
+            requests.push(request);
         }
         
-        requests.push({
-            action: "SetLanguage",
-            language: parseInt(initialLanguage)
-        });
-
         Promise.resolve(requests)
-            .each(function(request){
-                if (request.action === "SetLanguage") {
-                    return WebApiClient.Update({
-                        overriddenSetName: "usersettingscollection",
-                        entityId: XrmTranslator.userId,
-                        entity: { uilanguageid: request.language }
-                    });
-                }
-                else if (request.action === "Update") {
-                    return WebApiClient.Update({
-                        entityName: "savedquery",
-                        entityId: request.recid,
-                        entity: request.entity
-                    }); 
-                }
+            .each(function(request) {
+                return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
@@ -204,7 +172,7 @@
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
                 
-                return ViewHandler.Load();
+                return AttributeHandler.Load();
             })
             .catch(XrmTranslator.errorHandler);
     }

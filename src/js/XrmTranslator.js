@@ -119,10 +119,14 @@
     }
     
     XrmTranslator.GetAttributeById = function(id) {
+        return XrmTranslator.GetAttributeByProperty("MetadataId", id);
+    }
+    
+    XrmTranslator.GetAttributeByProperty = function(property, value) {
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
             
-            if (attribute.MetadataId === id) {
+            if (attribute[property] === value) {
                 return attribute;
             }
         }
