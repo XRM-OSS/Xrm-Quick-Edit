@@ -25,26 +25,22 @@
 (function (ViewHandler, undefined) {
     "use strict";
     
-    function ApplyChanges(changes, labels) {
+    function ApplyChanges(recid, changes, updates) {
         for (var change in changes) {
             if (!changes.hasOwnProperty(change)) {
                 continue;
             }
             
-            for (var i = 0; i < labels.length; i++) {
-                var label = labels[i];
-                
-                if (label.LanguageCode == change) {
-                    label.Label = changes[change];
-                    label.HasChanged = true;
-                    
-                    break;
-                }
-                
-                // Did not find label for this language
-                if (i === labels.length - 1) {
-                    labels.push({ LanguageCode: change, Label: changes[change] })
-                }
+            if (!updates[change]) {
+                updates[change] = [{
+                    recid: recid,
+                    entity: { name: changes[change] }
+                }];
+            } else {
+                updates[change].push({
+                    recid: recid,
+                    entity: { name: changes[change] }
+                });
             }
         }
     }
@@ -52,19 +48,15 @@
     function GetUpdates() {
         var records = XrmTranslator.GetGrid().records;
         
-        var updates = [];
+        var updates = {};
         
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             
-            if (record.w2ui && record.w2ui.changes) {
-                var attribute = XrmTranslator.GetAttributeById (record.recid);
-                var labels = attribute.DisplayName.LocalizedLabels;
-                
+            if (record.w2ui && record.w2ui.changes) {                
                 var changes = record.w2ui.changes;
                 
-                ApplyChanges(changes, labels);
-                updates.push(attribute);
+                ApplyChanges(record.recid, changes, updates);
             }
         }
         
@@ -172,26 +164,56 @@
         XrmTranslator.LockGrid("Saving");
         
         var updates = GetUpdates();
-        
         var requests = [];
-        var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")/Attributes(";
         
-        for (var i = 0; i < updates.length; i++) {
-            var update = updates[i];
-            var url = entityUrl + update.MetadataId + ")";
+        var updateRequest = {
+            entityName: "savedquery"
+        };
+        
+        var languages = XrmTranslator.installedLanguages.LocaleIds;
+        var initialLanguage = XrmTranslator.userSettings.uilanguageid;
+        var requests = [];
+        
+        for (var update in updates) {
+            if (!updates.hasOwnProperty(update)) {
+                continue;
+            }
             
-            var request = {
-                method: "PUT", 
-                url: url, 
-                attribute: update, 
-                headers: [{key: "MSCRM.MergeLabels", value: "true"}]
-            };
-            requests.push(request);
+            requests.push({
+                action: "SetLanguage",
+                language: parseInt(update)
+            });
+            
+            for (var i = 0; i < updates[update].length; i++) {
+                requests.push({
+                    action: "Update",
+                    recid: updates[update][i].recid,
+                    entity: updates[update][i].entity
+                });
+            }
         }
         
+        requests.push({
+            action: "SetLanguage",
+            language: parseInt(initialLanguage)
+        });
+
         Promise.resolve(requests)
-            .each(function(request) {
-                return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
+            .each(function(request){
+                if (request.action === "SetLanguage") {
+                    return WebApiClient.Update({
+                        overriddenSetName: "usersettingscollection",
+                        entityId: XrmTranslator.userId,
+                        entity: { uilanguageid: request.language }
+                    });
+                }
+                else if (request.action === "Update") {
+                    return WebApiClient.Update({
+                        entityName: "savedquery",
+                        entityId: request.recid,
+                        entity: request.entity
+                    }); 
+                }
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
