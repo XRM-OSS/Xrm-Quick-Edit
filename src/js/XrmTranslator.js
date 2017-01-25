@@ -60,14 +60,17 @@
         else if (XrmTranslator.GetType() === "forms") {
             currentHandler = FormHandler;
         }
+        else if (XrmTranslator.GetType() === "views") {
+            currentHandler = ViewHandler;
+        }
     }
     
     XrmTranslator.errorHandler = function(error) {
         if(error.statusText) {
-            alert(error.statusText);
+            w2alert(error.statusText);
         }
         else {
-            alert(error);
+            w2alert(error);
         }
         
         XrmTranslator.UnlockGrid();
@@ -141,7 +144,7 @@
                 { field: 'schemaName', caption: 'Schema Name', type: 'text' }
             ],
             columns: [
-                { field: 'schemaName', caption: 'Schema Name', size: '20%', sortable: true, resizable: true }
+                { field: 'schemaName', caption: 'Schema Name', size: '20%', sortable: true, resizable: true, frozen: true }
             ],
             onSave: function (event) {
                 currentHandler.Save();
@@ -172,7 +175,8 @@
                         items: [
                             { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
                             { id: 'options', text: 'Options', icon: 'fa-picture' },
-                            { id: 'forms', text: 'Forms', icon: 'fa-picture' }
+                            { id: 'forms', text: 'Forms', icon: 'fa-picture' },
+                            { id: 'views', text: 'Views', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'button', id: 'load', text: 'Load' },
