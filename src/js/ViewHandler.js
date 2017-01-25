@@ -108,56 +108,37 @@
         
         var languages = XrmTranslator.installedLanguages.LocaleIds;
         var initialLanguage = XrmTranslator.userSettings.uilanguageid;
-        var views = [];
-        var requests = [];
-        
-        for (var i = 0; i < languages.length; i++) {
-            requests.push({
-                action: "Update",
-                language: languages[i]
-            });
-            
-            requests.push({
-                action: "Retrieve",
-                language: languages[i]
-            });
-        }
-        
-        requests.push({
-            action: "Update",
-            language: initialLanguage
-        });
 
-        Promise.reduce(requests, function(total, request){
-            if (request.action === "Update") {
-                return WebApiClient.Update({
-                    overriddenSetName: "usersettingscollection",
-                    entityId: XrmTranslator.userId,
-                    entity: { uilanguageid: request.language }
-                })
-                .then(function(response) {
-                    return total;
-                });
-            }
-            else if (request.action === "Retrieve") {
-                return Promise.props({
-                    views: WebApiClient.Retrieve(queryRequest),
-                    languageCode: request.language
-                })
-                .then(function (response) {
-                    total.push(response);
-                    
-                    return total;
-                }); 
-            }
-        }, [])
-        .then(function(responses) {
-                var views = responses;
-                XrmTranslator.metadata = views;
+        WebApiClient.Retrieve(queryRequest)
+            .then(function(response) {
+                var views = response.value;
+                var requests = [];
                 
-                FillTable();
-        })
-        .catch(XrmTranslator.errorHandler);
+                for (var i = 0; i < views.length; i++) {
+                    var view = views[i];
+                    
+                    var prop = Promise.props({
+                        recid: view.savedqueryid,
+                        labels: WebApiClient.SendRequest("GET", WebApiClient.GetApiUrl() + "RetrieveLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)?@p1={'@odata.id':'savedqueries(" + view.savedqueryid + ")'}&@p2='name'&@p3=true")
+                    });
+                    
+                    requests.push(prop);
+                }
+                
+                return Promise.all(requests);
+            })
+            .then(function (response) {
+                total.push(response);
+                
+                return total;
+            })
+            .then(function(responses) {
+                    var views = responses;
+                    XrmTranslator.metadata = views;
+                    
+                    FillTable();
+            })
+            .catch(XrmTranslator.errorHandler);
     }
     
     ViewHandler.Save = function() {
