@@ -26,6 +26,9 @@ Currently the following parts can be translated:
 ### OptionSet Values
 ![optionsettranslation](https://cloud.githubusercontent.com/assets/4287938/22116927/58ebb798-de72-11e6-97b2-fff3327acc38.PNG)
 
+### Views
+![views](https://cloud.githubusercontent.com/assets/4287938/22352769/d7baed72-e41d-11e6-9aea-c70246cfdf29.PNG)
+
 ### System Forms
 ![formtranslator](https://cloud.githubusercontent.com/assets/4287938/22186986/dc2bcfd8-e0fe-11e6-9f86-b9b61ddfb8dc.PNG)
 
