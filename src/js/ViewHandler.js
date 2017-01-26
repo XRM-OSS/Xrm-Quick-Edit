@@ -58,13 +58,13 @@
             var record = records[i];
             
             if (record.w2ui && record.w2ui.changes) {
-                var attribute = XrmTranslator.GetAttributeByProperty("recid", record.recid);
-                var labels = attribute.labels.Label.LocalizedLabels;
+                var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
+                var labels = view.labels.Label.LocalizedLabels;
                 
                 var changes = record.w2ui.changes;
                 
                 ApplyChanges(changes, labels);
-                updates.push(attribute);
+                updates.push(view);
             }
         }
         
@@ -153,16 +153,24 @@
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
             
-            var request = WebApiClient
-                .SendRequest("GET", WebApiClient.GetApiUrl() 
-                + "SetLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)?@p1={'@odata.id':'savedqueries(" + view.savedqueryid + ")'}&@p2='name'&@p3=true");
-           
+            var request = {
+                url: WebApiClient.GetApiUrl() + "SetLocLabels",
+                payload: {
+                    Labels: update.labels.Label.LocalizedLabels,
+                    EntityMoniker: {
+                        "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
+                        savedqueryid: update.recid
+                    },
+                    AttributeName: "name"
+                }
+            };
+            
             requests.push(request);
         }
         
         Promise.resolve(requests)
             .each(function(request) {
-                return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
+                return WebApiClient.SendRequest("POST", request.url, request.payload);
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
@@ -172,7 +180,7 @@
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
                 
-                return AttributeHandler.Load();
+                return ViewHandler.Load();
             })
             .catch(XrmTranslator.errorHandler);
     }
