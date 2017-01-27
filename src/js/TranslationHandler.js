@@ -185,7 +185,7 @@
         if (!fromIso || !toIso) {
             XrmTranslator.UnlockGrid();
             
-            alert("Could not find source or target language mapping, source iso:" + fromIso + ", target iso: " + toIso);
+            w2alert("Could not find source or target language mapping, source iso:" + fromIso + ", target iso: " + toIso);
             
             return;
         }
@@ -247,9 +247,8 @@
                 actions: {
                     "ok": function () { 
                         this.validate(); 
-                        
-                        ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
                         w2popup.close();
+                        ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
                     },
                     "cancel": function () {
                         w2popup.close();
