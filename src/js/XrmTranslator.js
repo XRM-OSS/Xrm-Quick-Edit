@@ -103,7 +103,13 @@
     XrmTranslator.Publish = function() {
         var xml = "<importexportxml><entities><entity>" + XrmTranslator.GetEntity().toLowerCase() + "</entity></entities></importexportxml>";
         
-        return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl() + "PublishXml", { ParameterXml: xml });
+        var request = WebApiClient.Requests.PublishXmlRequest
+            .with({
+                payload: {
+                    ParameterXml: xml
+                }
+            })
+        return WebApiClient.Execute(request);
     }
     
     XrmTranslator.GetRecord = function(records, selector) {

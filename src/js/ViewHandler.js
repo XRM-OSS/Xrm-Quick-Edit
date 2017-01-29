@@ -125,9 +125,18 @@
                 for (var i = 0; i < views.length; i++) {
                     var view = views[i];
                     
+                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
+                        .with({
+                            urlParams: {
+                                EntityMoniker: "{'@odata.id':'savedqueries(" + view.savedqueryid + ")'}",
+                                AttributeName: "'name'",
+                                IncludeUnpublished: true
+                            }
+                        })
+                        
                     var prop = Promise.props({
                         recid: view.savedqueryid,
-                        labels: WebApiClient.SendRequest("GET", WebApiClient.GetApiUrl() + "RetrieveLocLabels(EntityMoniker=@p1,AttributeName=@p2,IncludeUnpublished=@p3)?@p1={'@odata.id':'savedqueries(" + view.savedqueryid + ")'}&@p2='name'&@p3=true")
+                        labels: WebApiClient.Execute(retrieveLabelsRequest)
                     });
                     
                     requests.push(prop);
@@ -153,24 +162,24 @@
         for (var i = 0; i < updates.length; i++) {
             var update = updates[i];
             
-            var request = {
-                url: WebApiClient.GetApiUrl() + "SetLocLabels",
-                payload: {
-                    Labels: update.labels.Label.LocalizedLabels,
-                    EntityMoniker: {
-                        "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
-                        savedqueryid: update.recid
-                    },
-                    AttributeName: "name"
-                }
-            };
+            var request = WebApiClient.Requests.SetLocLabelsRequest
+                .with({
+                    payload: {
+                        Labels: update.labels.Label.LocalizedLabels,
+                        EntityMoniker: {
+                            "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
+                            savedqueryid: update.recid
+                        },
+                        AttributeName: "name"
+                    }
+                });
             
             requests.push(request);
         }
         
         Promise.resolve(requests)
             .each(function(request) {
-                return WebApiClient.SendRequest("POST", request.url, request.payload);
+                return WebApiClient.Execute(request);
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
