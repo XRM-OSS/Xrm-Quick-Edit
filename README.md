@@ -35,6 +35,12 @@ Currently the following parts can be translated:
 Note regarding form translations: Unfortunately the CRM only returns the current user's language labels when retrieving a system form. Other language labels, even if present, are not returned. Therefore the dashboard changes the user language to each installed language and retrieves the form, for being able to display all labels. After having retrieved all of the forms, your user language is restored to your initial value again.
 So please note that you should not abort loading of a form, as you might end up with a differnt language id (which you can of course just switch back in your options).
 
+### System Form Names
+![formmetatranslator](https://cloud.githubusercontent.com/assets/4287938/22621293/abe84faa-eb20-11e6-8d03-f281fadd5ef8.PNG)
+
+### Entity Display (Collection) Names
+![entitytranslator](https://cloud.githubusercontent.com/assets/4287938/22621291/a1596fba-eb20-11e6-82de-f56ac00aca55.PNG)
+
 ## System requirements
 ### CRM Version
 This solution is available for CRM 2016 >= 8.0, since it requires the Web API for operating.
