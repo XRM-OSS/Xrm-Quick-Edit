@@ -63,6 +63,12 @@
         else if (XrmTranslator.GetType() === "views") {
             currentHandler = ViewHandler;
         }
+        else if (XrmTranslator.GetType() === "formMeta") {
+            currentHandler = FormMetaHandler;
+        }
+        else if (XrmTranslator.GetType() === "entityMeta") {
+            currentHandler = EntityHandler;
+        }
     }
     
     XrmTranslator.errorHandler = function(error) {
@@ -186,7 +192,9 @@
                             { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
                             { id: 'options', text: 'Options', icon: 'fa-picture' },
                             { id: 'forms', text: 'Forms', icon: 'fa-picture' },
-                            { id: 'views', text: 'Views', icon: 'fa-picture' }
+                            { id: 'views', text: 'Views', icon: 'fa-picture' },
+                            { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
+                            { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'button', id: 'load', text: 'Load' },
@@ -242,7 +250,7 @@
     }
 
     function GetUserId() {
-        return WebApiClient.SendRequest("GET", WebApiClient.GetApiUrl() + "WhoAmI");
+        return WebApiClient.Execute(WebApiClient.Requests.WhoAmIRequest);
     }
     
     function GetUserSettings(userId) {
