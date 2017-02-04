@@ -52,23 +52,27 @@
     function GetUpdates() {
         var records = XrmTranslator.GetGrid().records;
         
-        var updates = [];
+        var update = XrmTranslator.metadata;
         
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             
             if (record.w2ui && record.w2ui.changes) {
-                var view = XrmTranslator.GetAttributeByProperty("recid", record.recid);
-                var labels = view.labels.Label.LocalizedLabels;
+                var labels = null;
+                
+                if (record.schemaName === "Display Name") {
+                    labels = update.DisplayName.LocalizedLabels;
+                } else if (record.schemaName === "Collection Name") {
+                    labels = update.DisplayCollectionName.LocalizedLabels;
+                }
                 
                 var changes = record.w2ui.changes;
                 
                 ApplyChanges(changes, labels);
-                updates.push(view);
             }
         }
         
-        return updates;
+        return update;
     }
     
     function FillTable () {
@@ -76,29 +80,40 @@
         grid.clear();
         
         var records = [];
-        
-        for (var i = 0; i < XrmTranslator.metadata.length; i++) {
-            var view = XrmTranslator.metadata[i];
+    
+        var entity = XrmTranslator.metadata;
 
-            var displayNames = view.labels.Label.LocalizedLabels;
-            
-            if (!displayNames || displayNames.length === 0) {
-                continue;
-            }
-            
-            var record = {
-               recid: view.recid,
-               schemaName: "View"
-            };
-            
-            for (var j = 0; j < displayNames.length; j++) {
-                var displayName = displayNames[j];
-                
-                record[displayName.LanguageCode.toString()] = displayName.Label;
-            }
-            
-            records.push(record);
+        var displayNames = entity.DisplayName.LocalizedLabels;
+        var collectionNames = entity.DisplayCollectionName.LocalizedLabels;
+        
+        if (!displayNames && !collectionNames) {
+            return;
         }
+        
+        var singular = {
+            recid: XrmTranslator.metadata.MetadataId + "|1",
+            schemaName: "Display Name"
+        };
+        
+        var plural = {
+            recid: XrmTranslator.metadata.MetadataId + "|2",
+            schemaName: "Collection Name"  
+        };
+        
+        for (var i = 0; i < displayNames.length; i++) {
+            var displayName = displayNames[i];
+            
+            singular[displayName.LanguageCode.toString()] = displayName.Label;
+        }
+        
+        for (var j = 0; j < collectionNames.length; j++) {
+            var collectionName = collectionNames[j];
+            
+            plural[collectionName.LanguageCode.toString()] = collectionName.Label;
+        }
+        
+        records.push(singular);
+        records.push(plural);
         
         grid.add(records);
         grid.unlock();
@@ -106,46 +121,18 @@
     
     EntityHandler.Load = function() {
         var entityName = XrmTranslator.GetEntity();
-        
         var entityMetadataId = XrmTranslator.entityMetadata[entityName];
         
-        var formRequest = {
-            entityName: "systemform", 
-            queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
+        var request = {
+            entityName: "EntityDefinition",
+            entityId: entityMetadataId
         };
-
-        WebApiClient.Retrieve(formRequest)
+        
+        WebApiClient.Retrieve(request)
             .then(function(response) {
-                var forms = response.value;
-                var requests = [];
+                XrmTranslator.metadata = response;
                 
-                for (var i = 0; i < forms.length; i++) {
-                    var form = forms[i];
-                    
-                    var retrieveLabelsRequest = WebApiClient.Requests.RetrieveLocLabelsRequest
-                        .with({
-                            urlParams: {
-                                EntityMoniker: "{'@odata.id':'sysstemforms(" + form.formid + ")'}",
-                                AttributeName: "'name'",
-                                IncludeUnpublished: true
-                            }
-                        })
-                        
-                    var prop = Promise.props({
-                        recid: form.formid,
-                        labels: WebApiClient.Execute(retrieveLabelsRequest)
-                    });
-                    
-                    requests.push(prop);
-                }
-                
-                return Promise.all(requests);
-            })
-            .then(function(responses) {
-                    var forms = responses;
-                    XrmTranslator.metadata = forms;
-                    
-                    FillTable();
+                FillTable();
             })
             .catch(XrmTranslator.errorHandler);
     }
@@ -154,40 +141,19 @@
         XrmTranslator.LockGrid("Saving");
         
         var updates = GetUpdates();
-        var requests = [];
-        
-        for (var i = 0; i < updates.length; i++) {
-            var update = updates[i];
+        var entityUrl = WebApiClient.GetApiUrl() + "EntityDefinitions(" + XrmTranslator.GetEntityId() + ")";
+      
+        WebApiClient.SendRequest("PUT", entityUrl, updates, [{key: "MSCRM.MergeLabels", value: "true"}])
+        .then(function (response){
+            XrmTranslator.LockGrid("Publishing");
             
-            var request = WebApiClient.Requests.SetLocLabelsRequest
-                .with({
-                    payload: {
-                        Labels: update.labels.Label.LocalizedLabels,
-                        EntityMoniker: {
-                            "@odata.type": "Microsoft.Dynamics.CRM.savedquery",
-                            savedqueryid: update.recid
-                        },
-                        AttributeName: "name"
-                    }
-                });
+            return XrmTranslator.Publish();
+        })
+        .then(function (response) {
+            XrmTranslator.LockGrid("Reloading");
             
-            requests.push(request);
-        }
-        
-        Promise.resolve(requests)
-            .each(function(request) {
-                return WebApiClient.Execute(request);
-            })
-            .then(function (response){
-                XrmTranslator.LockGrid("Publishing");
-                
-                return XrmTranslator.Publish();
-            })
-            .then(function (response) {
-                XrmTranslator.LockGrid("Reloading");
-                
-                return EntityHandler.Load();
-            })
-            .catch(XrmTranslator.errorHandler);
+            return EntityHandler.Load();
+        })
+        .catch(XrmTranslator.errorHandler);
     }
 } (window.EntityHandler = window.EntityHandler || {}));
