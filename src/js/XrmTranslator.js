@@ -38,6 +38,30 @@
     
     var currentHandler = null;
     
+    function ExpandRecord (record) {
+        XrmTranslator.GetGrid().expand(record.recid);
+    }
+    
+    function CollapseRecord (record) {
+        XrmTranslator.GetGrid().collapse(record.recid);
+    }
+    
+    function ToggleExpandCollapse (expand) {
+        for (var i = 0; i < XrmTranslator.GetGrid().records.length; i++) {
+            var record = XrmTranslator.GetGrid().records[i];
+            
+            if (!record.w2ui || !record.w2ui.children) {
+                continue;
+            }
+            
+            if (expand) {
+                ExpandRecord(record);
+            } else {
+                CollapseRecord(record);
+            }
+        }
+    }
+    
     XrmTranslator.GetEntity = function() {
         return w2ui.grid_toolbar.get("entitySelect").selected;
     }
@@ -197,16 +221,7 @@
                             { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
                         ]
                     },
-                    { type: 'button', id: 'load', text: 'Load' },
-                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate' }
-                ],
-                onClick: function(event) {
-                    var target = event.target;
-                    
-                    if (target === "autoTranslate") {
-                        TranslationHandler.ShowTranslationPrompt();
-                    }
-                    else if (target === "load") {
+                    { type: 'button', id: 'load', text: 'Load', onClick: function (event) {
                         var entity = XrmTranslator.GetEntity();
                         
                         if (!entity || !XrmTranslator.GetType()) {
@@ -218,8 +233,17 @@
                         XrmTranslator.LockGrid("Loading " + entity + " attributes");
                         
                         currentHandler.Load();
-                    }
-                }
+                    } },
+                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', onClick: function (event) {
+                        TranslationHandler.ShowTranslationPrompt();
+                    } },
+                    { type: 'button', text: 'Expand all records', id: 'expandAll', onClick: function (event) {
+                        ToggleExpandCollapse(true); 
+                    } }, 
+                    { type: 'button', text: 'Collapse all records', id: 'collapseAll', onClick: function (event) {
+                        ToggleExpandCollapse(false); 
+                    } }
+                ]
             }
         }); 
         
