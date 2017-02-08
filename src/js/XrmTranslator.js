@@ -170,6 +170,57 @@
         return null;
     }
     
+    function ShowFindAndReplaceResults () {
+        var grid = { 
+            name: 'findAndReplaceGrid',
+            columns: [
+                { field: 'schemaName', caption: 'Schema Name', size: '33%', sortable: true, searchable: true },
+                { field: 'current', caption: 'Current Text', size: '33%', sortable: true, searchable: true },
+                { field: 'replaced', caption: 'Replaced Text', size: '33%', sortable: true, searchable: true }
+            ],
+            records: [],
+            onClick: function(event) {
+                var grid = this;
+                var form = w2ui.form;
+                event.onComplete = function () {
+                    var sel = grid.getSelection();
+                    if (sel.length == 1) {
+                        form.recid  = sel[0];
+                        form.record = $.extend(true, {}, grid.get(sel[0]));
+                        form.refresh();
+                    } else {
+                        form.clear();
+                    }
+                }
+            }
+        };
+
+        $(function () {
+            // initialization in memory
+            $().w2grid(grid);
+        });
+
+        w2popup.open({
+            title   : 'Popup',
+            width   : 900,
+            height  : 600,
+            showMax : true,
+            body    : '<div id="main" style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;"></div>',
+            onOpen  : function (event) {
+                event.onComplete = function () {
+                    $('#w2ui-popup #main').w2render('findAndReplaceGrid');
+                };
+            },
+            onToggle: function (event) {
+                $(w2ui.findAndReplaceGrid.box).hide();
+                event.onComplete = function () {
+                    $(w2ui.findAndReplaceGrid.box).show();
+                    w2ui.findAndReplaceGrid.resize();
+                }
+            }
+        });
+    }
+    
     function OpenFindAndReplaceDialog () {
         if (!w2ui.findAndReplace) {
             var languageLcids = [];
@@ -230,6 +281,7 @@
                     "ok": function () { 
                         this.validate(); 
                         w2popup.close();
+                        ShowFindAndReplaceResults();
                     },
                     "cancel": function () {
                         w2popup.close();
