@@ -169,6 +169,98 @@
         
         return null;
     }
+    
+    function OpenFindAndReplaceDialog () {
+        if (!w2ui.findAndReplace) {
+            var languageLcids = [];
+            var availableLanguages = XrmTranslator.installedLanguages.LocaleIds;
+            
+            for (var i = 0; i < availableLanguages.length; i++) {
+                languageLcids.push(availableLanguages[i].toString());
+            }
+            
+            $().w2form({
+                name: 'findAndReplace',
+                style: 'border: 0px; background-color: transparent;',
+                formHTML: 
+                    '<div class="w2ui-page page-0">'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Replace in Column:</label>'+
+                    '        <div>'+
+                    '           <input name="column" type="list"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Find:</label>'+
+                    '        <div>'+
+                    '            <input name="find" type="text"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Replace:</label>'+
+                    '        <div>'+
+                    '            <input name="replace" type="text"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Use Regex:</label>'+
+                    '        <div>'+
+                    '            <input name="regex" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Ignore Case:</label>'+
+                    '        <div>'+
+                    '            <input name="ignoreCase" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '</div>'+
+                    '<div class="w2ui-buttons">'+
+                    '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                    '    <button class="w2ui-btn" name="ok">Ok</button>'+
+                    '</div>',
+                fields: [
+                    { field: 'find', type: 'text', required: true },
+                    { field: 'replace', type: 'text', required: true },
+                    { field: 'regex', type: 'checkbox', required: true },
+                    { field: 'ignoreCase', type: 'checkbox', required: true },
+                    { field: 'column', type: 'list', required: true, options: { items: languageLcids } }
+                ],
+                actions: {
+                    "ok": function () { 
+                        this.validate(); 
+                        w2popup.close();
+                    },
+                    "cancel": function () {
+                        w2popup.close();
+                    }
+                }
+            });
+        }
+        
+        $().w2popup('open', {
+            title   : 'Find and Replace',
+            name    : 'findAndReplacePopup',
+            body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
+            style   : 'padding: 15px 0px 0px 0px',
+            width   : 500,
+            height  : 300, 
+            showMax : true,
+            onToggle: function (event) {
+                $(w2ui.findAndReplace.box).hide();
+                event.onComplete = function () {
+                    $(w2ui.findAndReplace.box).show();
+                    w2ui.findAndReplace.resize();
+                }
+            },
+            onOpen: function (event) {
+                event.onComplete = function () {
+                    // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
+                    $('#w2ui-popup #form').w2render('findAndReplace');
+                }
+            }
+        });
+    }
           
     function InitializeGrid (entities) {        
         $('#grid').w2grid({ 
@@ -242,6 +334,9 @@
                     } }, 
                     { type: 'button', text: 'Collapse all records', id: 'collapseAll', onClick: function (event) {
                         ToggleExpandCollapse(false); 
+                    } },
+                    { type: 'button', text: 'Find and Replace', id: 'findReplace', onClick: function (event) {
+                        OpenFindAndReplaceDialog(); 
                     } }
                 ]
             }
