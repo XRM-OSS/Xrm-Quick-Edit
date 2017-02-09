@@ -231,7 +231,7 @@
                     { field: 'current', caption: 'Current Text', size: '25%', sortable: true, searchable: true },
                     { field: 'replaced', caption: 'Replaced Text', size: '25%', sortable: true, searchable: true }
                 ],
-                records: results
+                records: []
             };
 
             $(function () {
@@ -239,6 +239,9 @@
                 $().w2grid(grid);
             });
         }
+        
+        w2ui.findAndReplaceGrid.clear();
+        w2ui.findAndReplaceGrid.add(results);
 
         w2popup.open({
             title   : 'Apply Find and Replace',
