@@ -38,6 +38,10 @@
     
     var currentHandler = null;
     
+    RegExp.escape= function(s) {
+        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
+    
     function ExpandRecord (record) {
         XrmTranslator.GetGrid().expand(record.recid);
     }
@@ -267,23 +271,50 @@
         });
     }
     
-    function FindRecords(find, replace, regex, ignoreCase, column) {
+    function FindRecords(find, replace, useRegex, ignoreCase, column) {
         var records = XrmTranslator.GetGrid().records;
         var findings = [];
+        
+        var regex = null;
+        
+        if (useRegex) {
+            if (ignoreCase) {
+                regex = new RegExp(find, "i");
+            } else {
+                regex = new RegExp(find); 
+            }
+        } else {
+            if (ignoreCase) {
+                regex = new RegExp(RegExp.escape(find), "i");
+            } else {
+                regex = new RegExp(RegExp.escape(find)); 
+            }
+        }
         
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             var value = record[column];
             
-            if (value !== null && value.indexOf(find) !== -1) {
-                findings.push({
-                    recid: record.recid,
-                    schemaName: record.schemaName,
-                    column: column,
-                    current: value,
-                    replaced: value.replace(find, replace)
-                });
+            if (value === null || typeof(value) === "undefined") {
+                continue;
+            } 
+            
+            var replaced = null;
+            
+            replaced = value.replace(regex, replace);
+            
+            // No hit for search and replace
+            if (value === replaced) {
+                continue;
             }
+            
+            findings.push({
+                recid: record.recid,
+                schemaName: record.schemaName,
+                column: column,
+                current: value,
+                replaced: replaced
+            });
         }
         
         ShowFindAndReplaceResults(findings);
@@ -446,7 +477,7 @@
                         
                         currentHandler.Load();
                     } },
-                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'fa-star', onClick: function (event) {
+                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {
                         TranslationHandler.ShowTranslationPrompt();
                     } },
                     { type: 'menu', id: 'toggle', img: 'icon-folder',
@@ -456,7 +487,7 @@
                             { type: 'button', text: 'Collapse all records', id: 'collapseAll' }
                         ]
                     },
-                    { type: 'button', text: 'Find and Replace', id: 'findReplace', onClick: function (event) {
+                    { type: 'button', text: 'Find and Replace', img:'icon-page', id: 'findReplace', onClick: function (event) {
                         OpenFindAndReplaceDialog(); 
                     } }
                 ],
