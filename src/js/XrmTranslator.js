@@ -403,7 +403,7 @@
             },
             toolbar: {
                 items: [
-                    { type: 'menu-radio', id: 'entitySelect', icon: 'fa-star',
+                    { type: 'menu-radio', id: 'entitySelect', img: 'icon-folder',
                         text: function (item) {
                             var text = item.selected;
                             var el = this.get('entitySelect:' + item.selected);
@@ -417,7 +417,7 @@
                         },
                         items: []
                     },
-                    { type: 'menu-radio', id: 'type', icon: 'fa-star',
+                    { type: 'menu-radio', id: 'type', img: 'icon-folder',
                         text: function (item) {
                             var text = item.selected;
                             var el   = this.get('type:' + item.selected);
@@ -433,7 +433,7 @@
                             { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
                         ]
                     },
-                    { type: 'button', id: 'load', text: 'Load', onClick: function (event) {
+                    { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
                         var entity = XrmTranslator.GetEntity();
                         
                         if (!entity || !XrmTranslator.GetType()) {
@@ -446,19 +446,29 @@
                         
                         currentHandler.Load();
                     } },
-                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', onClick: function (event) {
+                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'fa-star', onClick: function (event) {
                         TranslationHandler.ShowTranslationPrompt();
                     } },
-                    { type: 'button', text: 'Expand all records', id: 'expandAll', onClick: function (event) {
-                        ToggleExpandCollapse(true); 
-                    } }, 
-                    { type: 'button', text: 'Collapse all records', id: 'collapseAll', onClick: function (event) {
-                        ToggleExpandCollapse(false); 
-                    } },
+                    { type: 'menu', id: 'toggle', img: 'icon-folder',
+                        text: "Toggle",
+                        items: [
+                            { type: 'button', text: 'Expand all records', id: 'expandAll' }, 
+                            { type: 'button', text: 'Collapse all records', id: 'collapseAll' }
+                        ]
+                    },
                     { type: 'button', text: 'Find and Replace', id: 'findReplace', onClick: function (event) {
                         OpenFindAndReplaceDialog(); 
                     } }
-                ]
+                ],
+                onClick: function (event) {
+                    var target = event.target;
+                    
+                    if (target.indexOf("expandAll") !== -1) {
+                        ToggleExpandCollapse(true); 
+                    } else if (target.indexOf("collapseAll") !== -1) {
+                        ToggleExpandCollapse(false); 
+                    }
+                }
             }
         }); 
         
