@@ -154,9 +154,26 @@
         return null;
     }
     
+    XrmTranslator.SetSaveButtonDisabled = function (disabled) {
+        var saveButton = w2ui.grid_toolbar.get("w2ui-save");
+        saveButton.disabled = disabled;
+        w2ui.grid_toolbar.refresh();
+    }
+    
     XrmTranslator.GetAttributeById = function(id) {
         return XrmTranslator.GetAttributeByProperty("MetadataId", id);
     }
+    
+    XrmTranslator.GetByRecId = function (records, recid) {
+        function selector(rec) {
+            if (rec.recid === recid) {
+                return true;
+            }
+            return false;
+        }
+        
+        return XrmTranslator.GetRecord(records, selector);
+    };
     
     XrmTranslator.GetAttributeByProperty = function(property, value) {
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
@@ -170,38 +187,63 @@
         return null;
     }
     
-    function ShowFindAndReplaceResults () {
-        var grid = { 
-            name: 'findAndReplaceGrid',
-            columns: [
-                { field: 'schemaName', caption: 'Schema Name', size: '33%', sortable: true, searchable: true },
-                { field: 'current', caption: 'Current Text', size: '33%', sortable: true, searchable: true },
-                { field: 'replaced', caption: 'Replaced Text', size: '33%', sortable: true, searchable: true }
-            ],
-            records: [],
-            onClick: function(event) {
-                var grid = this;
-                var form = w2ui.form;
-                event.onComplete = function () {
-                    var sel = grid.getSelection();
-                    if (sel.length == 1) {
-                        form.recid  = sel[0];
-                        form.record = $.extend(true, {}, grid.get(sel[0]));
-                        form.refresh();
-                    } else {
-                        form.clear();
-                    }
-                }
+    XrmTranslator.ApplyFindAndReplace = function (selected, results) {
+        var grid = XrmTranslator.GetGrid();
+        var savable = false;
+        
+        for (var i = 0; i < selected.length; i++) {
+            var select = selected[i];
+            
+            var result = XrmTranslator.GetByRecId(results, select);
+            var record = XrmTranslator.GetByRecId(grid.records, result.recid);
+            
+            if (!record) {
+                continue;
             }
-        };
+            
+            if (!record.w2ui) {
+                record["w2ui"] = {};
+            }
+            
+            if (!record.w2ui.changes) {
+                record.w2ui["changes"] = {};
+            }
+            
+            record.w2ui.changes[result.column] = result.replaced;
+            savable = true;
+            grid.refreshRow(record.recid);
+        }
+        
+        if (savable) {
+            XrmTranslator.SetSaveButtonDisabled(false);
+        }
+    }
+    
+    function ShowFindAndReplaceResults (results) {
+        if (!w2ui.findAndReplaceGrid) {
+            var grid = { 
+                name: 'findAndReplaceGrid',
+                show: { selectColumn: true },
+                multiSelect: true,
+                columns: [
+                    { field: 'schemaName', caption: 'Schema Name', size: '25%', sortable: true, searchable: true },
+                    { field: 'column', caption: 'Column', size: '25%', sortable: true, searchable: true },
+                    { field: 'current', caption: 'Current Text', size: '25%', sortable: true, searchable: true },
+                    { field: 'replaced', caption: 'Replaced Text', size: '25%', sortable: true, searchable: true }
+                ],
+                records: results
+            };
 
-        $(function () {
-            // initialization in memory
-            $().w2grid(grid);
-        });
+            $(function () {
+                // initialization in memory
+                $().w2grid(grid);
+            });
+        }
 
         w2popup.open({
-            title   : 'Popup',
+            title   : 'Apply Find and Replace',
+            buttons   : '<button class="w2ui-btn" onclick="w2popup.close();">Cancel</button> '+
+                        '<button class="w2ui-btn" onclick="XrmTranslator.ApplyFindAndReplace(w2ui.findAndReplaceGrid.getSelection(), w2ui.findAndReplaceGrid.records); w2popup.close();">Apply</button>',
             width   : 900,
             height  : 600,
             showMax : true,
@@ -209,6 +251,7 @@
             onOpen  : function (event) {
                 event.onComplete = function () {
                     $('#w2ui-popup #main').w2render('findAndReplaceGrid');
+                    w2ui.findAndReplaceGrid.selectAll();
                 };
             },
             onToggle: function (event) {
@@ -219,6 +262,28 @@
                 }
             }
         });
+    }
+    
+    function FindRecords(find, replace, regex, ignoreCase, column) {
+        var records = XrmTranslator.GetGrid().records;
+        var findings = [];
+        
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+            var value = record[column];
+            
+            if (value !== null && value.indexOf(find) !== -1) {
+                findings.push({
+                    recid: record.recid,
+                    schemaName: record.schemaName,
+                    column: column,
+                    current: value,
+                    replaced: value.replace(find, replace)
+                });
+            }
+        }
+        
+        ShowFindAndReplaceResults(findings);
     }
     
     function OpenFindAndReplaceDialog () {
@@ -281,7 +346,7 @@
                     "ok": function () { 
                         this.validate(); 
                         w2popup.close();
-                        ShowFindAndReplaceResults();
+                        FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id);
                     },
                     "cancel": function () {
                         w2popup.close();

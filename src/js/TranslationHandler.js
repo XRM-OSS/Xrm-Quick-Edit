@@ -164,9 +164,7 @@
         }
         
         if (savable) {
-            var saveButton = w2ui.grid_toolbar.get("w2ui-save");
-            saveButton.disabled = false;
-            w2ui.grid_toolbar.refresh();
+            XrmTranslator.SetSaveButtonDisabled(false);
         }
         
         return savable;
