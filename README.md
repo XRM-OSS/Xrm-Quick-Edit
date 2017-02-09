@@ -9,7 +9,7 @@ There is an automated translation feature for missing labels, that tries to get 
 This is a beta, use at your own risk and export a backup solution before testing.
 
 ## How to use
-After installing the solution, there will be a Translation Management Dashboard present in your organization.
+After installing the solution (download latest version [here](https://github.com/DigitalFlow/Xrm-Easy-Translation/releases), there will be a Translation Management Dashboard present in your organization.
 
 There will be a column in the translation grid for every language installed in the organization.
 Once the list of entities is loaded, select the one you want to translate, as well as which part.
