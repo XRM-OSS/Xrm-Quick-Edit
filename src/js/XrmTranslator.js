@@ -539,9 +539,33 @@
             entityId: userId
         });
     }
+    
+    function RegisterReloadPrevention () {
+        // Dashboards are automatically refreshed on browser window resize, we don't want to loose changes.
+        window.onbeforeunload = function(e) {
+            var records = XrmTranslator.GetGrid().records;
+            var unsavedChanges = false;
+            
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+                
+                if (record.w2ui && record.w2ui.changes) {
+                    unsavedChanges = true;
+                    break;
+                }
+            }
+            
+            if (unsavedChanges) {
+                var warning = "There are unsaved changes in the dashboard, are you sure you want to reload and discard changes?";
+                e.returnValue = warning;
+                return warning;
+            }
+        };
+    }
 
     XrmTranslator.Initialize = function() {
         InitializeGrid(); 
+        RegisterReloadPrevention();
         
         GetUserId()
             .then(function (response) {
