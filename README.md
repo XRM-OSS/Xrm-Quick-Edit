@@ -9,7 +9,7 @@ There is an automated translation feature for missing labels, that tries to get 
 This is a beta, use at your own risk and export a backup solution before testing.
 
 ## How to use
-After installing the solution, there will be a Translation Management Dashboard present in your organization.
+After installing the solution (download latest version [here](https://github.com/DigitalFlow/Xrm-Easy-Translation/releases)), there will be a Translation Management Dashboard present in your organization.
 
 There will be a column in the translation grid for every language installed in the organization.
 Once the list of entities is loaded, select the one you want to translate, as well as which part.
@@ -18,7 +18,9 @@ For missing translations, you can click the Auto Translate button, which will tr
 
 After you did your changes, the save button will be enabled. By clicking it, the labels will be saved to CRM and the entity will be published.
 
-Currently the following parts can be translated:
+## Precautions
+When using bulk edit features such as Auto Translate or Find and Replace, be sure to expand all rows. Not expanded rows will not be processed during those features. This is also valid for saving, so be sure that all your changes are visible when saving.
+This is a bug in w2ui and will eventually be fixed.
 
 ### Attributes
 ![translationdashboard](https://cloud.githubusercontent.com/assets/4287938/22001408/53ac0992-dc45-11e6-8d19-940516221d9f.PNG)
@@ -40,6 +42,18 @@ So please note that you should not abort loading of a form, as you might end up 
 
 ### Entity Display (Collection) Names
 ![entitytranslator](https://cloud.githubusercontent.com/assets/4287938/22621291/a1596fba-eb20-11e6-82de-f56ac00aca55.PNG)
+
+## Functions
+### Find and Replace
+When clicking Find and Replace, you can enter your search text as either regex (JS style) or plain text.
+There is an option for ignoring the case when searching for matches.
+
+![findandreplacestart](https://cloud.githubusercontent.com/assets/4287938/22790460/93e81880-eee6-11e6-87ef-a9761ccd821c.PNG)
+
+After the find and replace has processed all records, you will be presented with a selection dialog.
+Select all replacements that you want to apply and they will be changed in the grid.
+
+![applyfindandreplace](https://cloud.githubusercontent.com/assets/4287938/22790577/f210c70e-eee6-11e6-8b86-a32fd65ba017.PNG)
 
 ## System requirements
 ### CRM Version
