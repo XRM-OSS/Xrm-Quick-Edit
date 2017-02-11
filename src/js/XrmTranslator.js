@@ -541,7 +541,7 @@
     }
     
     function RegisterReloadPrevention () {
-        // Dashboards are automatically refreshed on browser window resize, we don't want to loose changes.
+        // Dashboards are automatically refreshed on browser window resize, we don't want to lose changes.
         window.onbeforeunload = function(e) {
             var records = XrmTranslator.GetGrid().records;
             var unsavedChanges = false;
