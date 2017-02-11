@@ -37,7 +37,7 @@
     }
     
     function NodesWithIdAndLabels (node) {
-        if (node.id && node.getElementsByTagName("labels").length > 0) {
+        if (node.id && node.getElementsByTagName("labels").length > 0 && node.getElementsByTagName("control").length > 0) {
             return NodeFilter.FILTER_ACCEPT;
         }
         return NodeFilter.FILTER_SKIP;
