@@ -25,18 +25,6 @@ For missing translations, you can click the Auto Translate button, which will tr
 
 After you did your changes, the save button will be enabled. By clicking it, the labels will be saved to CRM and the entity will be published.
 
-#### Functions
-##### Find and Replace
-When clicking Find and Replace, you can enter your search text as either regex (JS style) or plain text.
-There is an option for ignoring the case when searching for matches.
-
-![findandreplacestart](https://cloud.githubusercontent.com/assets/4287938/22790460/93e81880-eee6-11e6-87ef-a9761ccd821c.PNG)
-
-After the find and replace has processed all records, you will be presented with a selection dialog.
-Select all replacements that you want to apply and they will be changed in the grid.
-
-![applyfindandreplace](https://cloud.githubusercontent.com/assets/4287938/22790577/f210c70e-eee6-11e6-8b86-a32fd65ba017.PNG)
-
 #### Attributes
 ![translationdashboard](https://cloud.githubusercontent.com/assets/4287938/22001408/53ac0992-dc45-11e6-8d19-940516221d9f.PNG)
 
@@ -57,6 +45,18 @@ So please note that you should not abort loading of a form, as you might end up 
 
 #### Entity Display (Collection) Names
 ![entitytranslator](https://cloud.githubusercontent.com/assets/4287938/22621291/a1596fba-eb20-11e6-82de-f56ac00aca55.PNG)
+
+#### Functions
+##### Find and Replace
+When clicking Find and Replace, you can enter your search text as either regex (JS style) or plain text.
+There is an option for ignoring the case when searching for matches.
+
+![findandreplacestart](https://cloud.githubusercontent.com/assets/4287938/22790460/93e81880-eee6-11e6-87ef-a9761ccd821c.PNG)
+
+After the find and replace has processed all records, you will be presented with a selection dialog.
+Select all replacements that you want to apply and they will be changed in the grid.
+
+![applyfindandreplace](https://cloud.githubusercontent.com/assets/4287938/22790577/f210c70e-eee6-11e6-8b86-a32fd65ba017.PNG)
 
 ### Property Editor Dashboard
 ![propertyeditor](https://cloud.githubusercontent.com/assets/4287938/22862381/b547167c-f12d-11e6-838c-633358003d59.PNG)
