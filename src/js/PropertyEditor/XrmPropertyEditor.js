@@ -198,8 +198,8 @@
                         },
                         selected: 'attributes',
                         items: [
-                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
-                            { id: 'entities', text: 'Entities', icon: 'fa-picture' }
+                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' }
+                            //{ id: 'entities', text: 'Entities', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
@@ -210,8 +210,7 @@
                         }
 
                         SetHandler();
-                        
-                        XrmPropertyEditor.RestoreInitialColumns();
+
                         XrmPropertyEditor.LockGrid("Loading " + entity + " attributes");
 
                         currentHandler.Load();

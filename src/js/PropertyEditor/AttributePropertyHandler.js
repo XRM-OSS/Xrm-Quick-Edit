@@ -27,7 +27,8 @@
 
     var levels = [{ id: "None", text: "None" },
       { id: "Recommended", text: "Recommended" },
-      { id: "ApplicationRequired", text: "Required" }];
+      { id: "ApplicationRequired", text: "Application Required" },
+      { id: "SystemRequired", text: "System Required" }];
 
     function ApplyChanges(attribute, changes) {
         for (var change in changes) {
@@ -35,7 +36,18 @@
                 continue;
             }
 
-            attribute[change] = changes[change];
+            if (change === "RequiredLevel") {
+                // System required can not be changed or set
+                if (attribute.RequiredLevel.Value === "SystemRequired" || changes[change] === "SystemRequired") {
+                    continue;
+                }
+            }
+
+            if (attribute[change].ManagedPropertyLogicalName) {
+                attribute[change].Value = changes[change];
+            } else {
+                attribute[change] = changes[change];
+            }
         }
     }
 
@@ -72,7 +84,10 @@
             var record = {
                recid: attribute.MetadataId,
                schemaName: attribute.SchemaName,
-               requiredLevel: attribute.RequiredLevel.Value
+               RequiredLevel: attribute.RequiredLevel.Value,
+               IsAuditEnabled: attribute.IsAuditEnabled.Value,
+               IsValidForAdvancedFind: attribute.IsValidForAdvancedFind.Value,
+               IsSecured: attribute.IsSecured
             };
 
             records.push(record);
@@ -85,8 +100,11 @@
     function InitializeColumns () {
         var grid = XrmPropertyEditor.GetGrid();
 
-        grid.addColumn ([
-            { field: 'requiredLevel', caption: 'Required Level', size: '100px', sortable: true, resizable: true,
+        var columnSize = 100 / 5;
+
+        grid.columns = [
+            { field: 'schemaName', caption: 'Schema Name', size: columnSize + '%', sortable: true, resizable: true, frozen: true },
+            { field: 'RequiredLevel', caption: 'Required Level', size: columnSize + '%', sortable: true, resizable: true,
                 editable: { type: 'select', items: levels, showAll: true },
                   render: function (record, index, col_index) {
                       var html = '';
@@ -98,11 +116,23 @@
                       }
                       return html;
                   }
+            },
+            { field: 'IsAuditEnabled', caption: 'Is Audit Enabled', size: columnSize + '%', sortable: true, resizable: true, style: 'text-align: center',
+                editable: { type: 'checkbox', style: 'text-align: center' }
+            },
+            { field: 'IsValidForAdvancedFind', caption: 'Is Valid For Advanced Find', size: columnSize + '%', sortable: true, resizable: true, style: 'text-align: center',
+                editable: { type: 'checkbox', style: 'text-align: center' }
+            },
+            { field: 'IsSecured', caption: 'Is Secured', size: columnSize + '%', sortable: true, resizable: true, style: 'text-align: center',
+                editable: { type: 'checkbox', style: 'text-align: center' }
             }
-        ]);
+        ];
+
+        grid.refresh();
     }
 
     AttributePropertyHandler.Load = function() {
+        XrmPropertyEditor.RestoreInitialColumns();
         InitializeColumns();
         var entityName = XrmPropertyEditor.GetEntity();
         var entityMetadataId = XrmPropertyEditor.entityMetadata[entityName];
