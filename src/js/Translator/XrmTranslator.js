@@ -2,17 +2,17 @@
  * MIT License
  *
  * Copyright (c) 2017 Florian Krönert
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,10 +24,10 @@
 */
 (function (XrmTranslator, undefined) {
     "use strict";
-    
+
     XrmTranslator.entityMetadata = {};
     XrmTranslator.metadata = [];
-    
+
     XrmTranslator.entity = null;
     XrmTranslator.type = null;
 
@@ -35,29 +35,29 @@
     XrmTranslator.userId = null;
     XrmTranslator.userSettings = null;
     XrmTranslator.installedLanguages = null;
-    
+
     var currentHandler = null;
-    
+
     RegExp.escape= function(s) {
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
-    
+
     function ExpandRecord (record) {
         XrmTranslator.GetGrid().expand(record.recid);
     }
-    
+
     function CollapseRecord (record) {
         XrmTranslator.GetGrid().collapse(record.recid);
     }
-    
+
     function ToggleExpandCollapse (expand) {
         for (var i = 0; i < XrmTranslator.GetGrid().records.length; i++) {
             var record = XrmTranslator.GetGrid().records[i];
-            
+
             if (!record.w2ui || !record.w2ui.children) {
                 continue;
             }
-            
+
             if (expand) {
                 ExpandRecord(record);
             } else {
@@ -65,19 +65,19 @@
             }
         }
     }
-    
+
     XrmTranslator.GetEntity = function() {
         return w2ui.grid_toolbar.get("entitySelect").selected;
     }
-    
+
     XrmTranslator.GetEntityId = function() {
         return XrmTranslator.entityMetadata[XrmTranslator.GetEntity()]
     }
-    
+
     XrmTranslator.GetType = function() {
         return w2ui.grid_toolbar.get("type").selected;
     }
-    
+
     function SetHandler() {
         if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
@@ -98,7 +98,7 @@
             currentHandler = EntityHandler;
         }
     }
-    
+
     XrmTranslator.errorHandler = function(error) {
         if(error.statusText) {
             w2alert(error.statusText);
@@ -106,37 +106,37 @@
         else {
             w2alert(error);
         }
-        
+
         XrmTranslator.UnlockGrid();
     }
-    
+
     XrmTranslator.SchemaNameComparer = function(e1, e2) {
         if (e1.SchemaName < e2.SchemaName) {
             return -1;
         }
-        
+
         if (e1.SchemaName > e2.SchemaName) {
             return 1;
         }
-        
+
         return 0;
     }
-    
+
     XrmTranslator.GetGrid = function() {
         return w2ui.grid;
     }
-    
+
     XrmTranslator.LockGrid = function (message) {
         XrmTranslator.GetGrid().lock(message, true);
     }
-    
+
     XrmTranslator.UnlockGrid = function () {
         XrmTranslator.GetGrid().unlock();
     }
-    
+
     XrmTranslator.Publish = function() {
         var xml = "<importexportxml><entities><entity>" + XrmTranslator.GetEntity().toLowerCase() + "</entity></entities></importexportxml>";
-        
+
         var request = WebApiClient.Requests.PublishXmlRequest
             .with({
                 payload: {
@@ -145,29 +145,29 @@
             })
         return WebApiClient.Execute(request);
     }
-    
+
     XrmTranslator.GetRecord = function(records, selector) {
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
-            
+
             if (selector(record)) {
                 return record;
             }
         }
-        
+
         return null;
     }
-    
+
     XrmTranslator.SetSaveButtonDisabled = function (disabled) {
         var saveButton = w2ui.grid_toolbar.get("w2ui-save");
         saveButton.disabled = disabled;
         w2ui.grid_toolbar.refresh();
     }
-    
+
     XrmTranslator.GetAttributeById = function(id) {
         return XrmTranslator.GetAttributeByProperty("MetadataId", id);
     }
-    
+
     XrmTranslator.GetByRecId = function (records, recid) {
         function selector(rec) {
             if (rec.recid === recid) {
@@ -175,57 +175,57 @@
             }
             return false;
         }
-        
+
         return XrmTranslator.GetRecord(records, selector);
     };
-    
+
     XrmTranslator.GetAttributeByProperty = function(property, value) {
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
-            
+
             if (attribute[property] === value) {
                 return attribute;
             }
         }
-        
+
         return null;
     }
-    
+
     XrmTranslator.ApplyFindAndReplace = function (selected, results) {
         var grid = XrmTranslator.GetGrid();
         var savable = false;
-        
+
         for (var i = 0; i < selected.length; i++) {
             var select = selected[i];
-            
+
             var result = XrmTranslator.GetByRecId(results, select);
             var record = XrmTranslator.GetByRecId(grid.records, result.recid);
-            
+
             if (!record) {
                 continue;
             }
-            
+
             if (!record.w2ui) {
                 record["w2ui"] = {};
             }
-            
+
             if (!record.w2ui.changes) {
                 record.w2ui["changes"] = {};
             }
-            
+
             record.w2ui.changes[result.column] = result.replaced;
             savable = true;
             grid.refreshRow(record.recid);
         }
-        
+
         if (savable) {
             XrmTranslator.SetSaveButtonDisabled(false);
         }
     }
-    
+
     function ShowFindAndReplaceResults (results) {
         if (!w2ui.findAndReplaceGrid) {
-            var grid = { 
+            var grid = {
                 name: 'findAndReplaceGrid',
                 show: { selectColumn: true },
                 multiSelect: true,
@@ -243,7 +243,7 @@
                 $().w2grid(grid);
             });
         }
-        
+
         w2ui.findAndReplaceGrid.clear();
         w2ui.findAndReplaceGrid.add(results);
 
@@ -270,44 +270,48 @@
             }
         });
     }
-    
+
     function FindRecords(find, replace, useRegex, ignoreCase, column) {
         var records = XrmTranslator.GetGrid().records;
         var findings = [];
-        
+
         var regex = null;
-        
+
         if (useRegex) {
             if (ignoreCase) {
                 regex = new RegExp(find, "i");
             } else {
-                regex = new RegExp(find); 
+                regex = new RegExp(find);
             }
         } else {
             if (ignoreCase) {
                 regex = new RegExp(RegExp.escape(find), "i");
             } else {
-                regex = new RegExp(RegExp.escape(find)); 
+                regex = new RegExp(RegExp.escape(find));
             }
         }
-        
+
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
             var value = record[column];
-            
+
+            if (record.w2ui && record.w2ui.changes && record.w2ui.changes[column]) {
+                value = record.w2ui.changes[column];
+            }
+
             if (value === null || typeof(value) === "undefined") {
                 continue;
-            } 
-            
+            }
+
             var replaced = null;
-            
+
             replaced = value.replace(regex, replace);
-            
+
             // No hit for search and replace
             if (value === replaced) {
                 continue;
             }
-            
+
             findings.push({
                 recid: record.recid,
                 schemaName: record.schemaName,
@@ -316,23 +320,23 @@
                 replaced: replaced
             });
         }
-        
+
         ShowFindAndReplaceResults(findings);
     }
-    
+
     function OpenFindAndReplaceDialog () {
         if (!w2ui.findAndReplace) {
             var languageLcids = [];
             var availableLanguages = XrmTranslator.installedLanguages.LocaleIds;
-            
+
             for (var i = 0; i < availableLanguages.length; i++) {
                 languageLcids.push(availableLanguages[i].toString());
             }
-            
+
             $().w2form({
                 name: 'findAndReplace',
                 style: 'border: 0px; background-color: transparent;',
-                formHTML: 
+                formHTML:
                     '<div class="w2ui-page page-0">'+
                     '    <div class="w2ui-field">'+
                     '        <label>Replace in Column:</label>'+
@@ -377,8 +381,8 @@
                     { field: 'column', type: 'list', required: true, options: { items: languageLcids } }
                 ],
                 actions: {
-                    "ok": function () { 
-                        this.validate(); 
+                    "ok": function () {
+                        this.validate();
                         w2popup.close();
                         FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id);
                     },
@@ -388,14 +392,14 @@
                 }
             });
         }
-        
+
         $().w2popup('open', {
             title   : 'Find and Replace',
             name    : 'findAndReplacePopup',
             body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
             style   : 'padding: 15px 0px 0px 0px',
             width   : 500,
-            height  : 300, 
+            height  : 300,
             showMax : true,
             onToggle: function (event) {
                 $(w2ui.findAndReplace.box).hide();
@@ -412,11 +416,11 @@
             }
         });
     }
-          
-    function InitializeGrid (entities) {        
-        $('#grid').w2grid({ 
-            name: 'grid', 
-            show: { 
+
+    function InitializeGrid (entities) {
+        $('#grid').w2grid({
+            name: 'grid',
+            show: {
                 toolbar: true,
                 footer: true,
                 toolbarSave: true,
@@ -438,7 +442,7 @@
                         text: function (item) {
                             var text = item.selected;
                             var el = this.get('entitySelect:' + item.selected);
-                            
+
                             if (el) {
                                 return 'Entity: ' + el.text;
                             }
@@ -466,15 +470,15 @@
                     },
                     { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
                         var entity = XrmTranslator.GetEntity();
-                        
+
                         if (!entity || !XrmTranslator.GetType()) {
                             return;
                         }
-                        
+
                         SetHandler();
-                        
+
                         XrmTranslator.LockGrid("Loading " + entity + " attributes");
-                        
+
                         currentHandler.Load();
                     } },
                     { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {
@@ -483,43 +487,43 @@
                     { type: 'menu', id: 'toggle', img: 'icon-folder',
                         text: "Toggle",
                         items: [
-                            { type: 'button', text: 'Expand all records', id: 'expandAll' }, 
+                            { type: 'button', text: 'Expand all records', id: 'expandAll' },
                             { type: 'button', text: 'Collapse all records', id: 'collapseAll' }
                         ]
                     },
                     { type: 'button', text: 'Find and Replace', img:'icon-page', id: 'findReplace', onClick: function (event) {
-                        OpenFindAndReplaceDialog(); 
+                        OpenFindAndReplaceDialog();
                     } }
                 ],
                 onClick: function (event) {
                     var target = event.target;
-                    
+
                     if (target.indexOf("expandAll") !== -1) {
-                        ToggleExpandCollapse(true); 
+                        ToggleExpandCollapse(true);
                     } else if (target.indexOf("collapseAll") !== -1) {
-                        ToggleExpandCollapse(false); 
+                        ToggleExpandCollapse(false);
                     }
                 }
             }
-        }); 
-        
+        });
+
         XrmTranslator.LockGrid("Loading entities");
     }
-    
+
     function FillEntitySelector (entities) {
         entities = entities.sort(XrmTranslator.SchemaNameComparer);
         var entitySelect = w2ui.grid_toolbar.get("entitySelect").items;
-        
+
         for (var i = 0; i < entities.length; i++) {
             var entity = entities[i];
-            
+
             entitySelect.push(entity.SchemaName);
             XrmTranslator.entityMetadata[entity.SchemaName] = entity.MetadataId;
         }
-        
+
         return entities;
     }
-    
+
     function GetEntities() {
         var request = {
             entityName: "EntityDefinition",
@@ -532,29 +536,29 @@
     function GetUserId() {
         return WebApiClient.Execute(WebApiClient.Requests.WhoAmIRequest);
     }
-    
+
     function GetUserSettings(userId) {
         return WebApiClient.Retrieve({
-            overriddenSetName: "usersettingscollection", 
+            overriddenSetName: "usersettingscollection",
             entityId: userId
         });
     }
-    
+
     function RegisterReloadPrevention () {
         // Dashboards are automatically refreshed on browser window resize, we don't want to lose changes.
         window.onbeforeunload = function(e) {
             var records = XrmTranslator.GetGrid().records;
             var unsavedChanges = false;
-            
+
             for (var i = 0; i < records.length; i++) {
                 var record = records[i];
-                
+
                 if (record.w2ui && record.w2ui.changes) {
                     unsavedChanges = true;
                     break;
                 }
             }
-            
+
             if (unsavedChanges) {
                 var warning = "There are unsaved changes in the dashboard, are you sure you want to reload and discard changes?";
                 e.returnValue = warning;
@@ -564,9 +568,9 @@
     }
 
     XrmTranslator.Initialize = function() {
-        InitializeGrid(); 
+        InitializeGrid();
         RegisterReloadPrevention();
-        
+
         GetUserId()
             .then(function (response) {
                 XrmTranslator.userId = response.UserId;
@@ -575,7 +579,7 @@
             })
             .then(function (response) {
                 XrmTranslator.userSettings = response;
-    
+
                 return GetEntities();
             })
             .then(function(response) {
