@@ -134,16 +134,43 @@
         XrmTranslator.GetGrid().unlock();
     }
 
-    XrmTranslator.Publish = function() {
-        var xml = "<importexportxml><entities><entity>" + XrmTranslator.GetEntity().toLowerCase() + "</entity></entities></importexportxml>";
+    XrmTranslator.SetUserLanguage = function (userId, language) {
+        return WebApiClient.Update({
+            overriddenSetName: "usersettingscollection",
+            entityId: userId,
+            entity: { uilanguageid: language }
+        });
+    }
 
-        var request = WebApiClient.Requests.PublishXmlRequest
-            .with({
-                payload: {
-                    ParameterXml: xml
-                }
+    XrmTranslator.Publish = function() {
+        return WebApiClient.Retrieve({entityName: "organization"})
+            .then(function(orgs) {
+                // Org exists always
+                var org = orgs.value[0];
+                return org;
             })
-        return WebApiClient.Execute(request);
+            .then(function(org) {
+                var baseLanguage = org.languagecode;
+
+                return XrmTranslator.SetUserLanguage(XrmTranslator.userId, baseLanguage);
+            })
+            .then(function() {
+                var xml = "<importexportxml><entities><entity>" + XrmTranslator.GetEntity().toLowerCase() + "</entity></entities></importexportxml>";
+
+                var request = WebApiClient.Requests.PublishXmlRequest
+                    .with({
+                        payload: {
+                            ParameterXml: xml
+                        }
+                    })
+                return WebApiClient.Execute(request);
+            })
+            .then(function() {
+                var initialLanguage = XrmTranslator.userSettings.uilanguageid;
+
+                return XrmTranslator.SetUserLanguage(XrmTranslator.userId, initialLanguage);
+            })
+            .catch(XrmTranslator.errorHandler);
     }
 
     XrmTranslator.GetRecord = function(records, selector) {
