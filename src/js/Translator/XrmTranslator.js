@@ -506,6 +506,8 @@
 
                         XrmTranslator.LockGrid("Loading " + entity + " attributes");
 
+                        // Reset column sorting
+                        XrmTranslator.GetGrid().sort();
                         currentHandler.Load();
                     } },
                     { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {

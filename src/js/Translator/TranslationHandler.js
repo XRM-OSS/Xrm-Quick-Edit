@@ -2,17 +2,17 @@
  * MIT License
  *
  * Copyright (c) 2017 Florian Krönert
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,16 +24,16 @@
 */
 (function (TranslationHandler, undefined) {
     "use strict";
-   
+
     var availableLanguages = [];
     var languageMappings = null;
     var translationApiUrl = "https://glosbe.com/gapi/translate?from=[sourceLanguage]&dest=[destLanguage]&format=json&phrase=[phrase]&pretty=true&tm=false&callback=?";
-    
+
     /// Thanks to http://www.chaholl.com/archive/2013/05/07/iso-639-2-to-windows-lcid-mapping.aspx for the mappings
     function GetLanguageIsoByLcid (lcid) {
         if (!languageMappings) {
             languageMappings = {};
-        
+
             languageMappings[1076] = "afr";
             languageMappings[1118] = "ara";
             languageMappings[1068] = "aze";
@@ -96,20 +96,20 @@
             languageMappings[1091] = "uzb";
             languageMappings[1066] = "vie";
         }
-        
+
         return languageMappings[lcid];
     }
-    
+
     function BuildTranslationUrl (fromLanguage, destLanguage, phrase) {
         return translationApiUrl
             .replace("?from=[sourceLanguage]", "?from=" + fromLanguage)
             .replace("&dest=[destLanguage]", "&dest=" + destLanguage)
             .replace("&phrase=[phrase]", "&phrase=" + encodeURIComponent(phrase));
     }
-    
+
     function GetTranslation(fromLanguage, destLanguage, phrase) {
         $.support.cors = true;
-        
+
         return Promise.resolve($.ajax({
             url: BuildTranslationUrl(fromLanguage, destLanguage, phrase),
             type: "GET",
@@ -117,89 +117,89 @@
             dataType: "json"
         }));
     }
-    
+
     function CapitalizeFirstChar (text) {
         if (!text) {
             return "";
         }
-        
+
         return text[0].toUpperCase() + text.substring(1);
     }
-    
+
     function AddTranslations(fromLcid, destLcid, updateRecords, responses) {
         var savable = false;
-        
+
         for (var i = 0; i < responses.length; i++) {
             var response = responses[i];
-            
+
             if (response.tuc.length > 0) {
                 var translation = response.tuc[0].phrase.text;
                 var phrase = response.phrase;
-                
+
                 var record = XrmTranslator.GetRecord(updateRecords, function (r) {
                     if (r[fromLcid] === phrase) {
                         return true;
                     }
                     return false;
                 });
-                
+
                 if (!record) {
                     continue;
                 }
-                
+
                 if (!record.w2ui) {
                     record["w2ui"] = {};
                 }
-                
+
                 if (!record.w2ui.changes) {
                     record.w2ui["changes"] = {};
                 }
-                
+
                 record.w2ui.changes[destLcid] = CapitalizeFirstChar(translation);
-                
+
                 savable = true;
-                
+
                 XrmTranslator.GetGrid().refreshRow(record.recid);
             }
         }
-        
+
         if (savable) {
             XrmTranslator.SetSaveButtonDisabled(false);
         }
-        
+
         return savable;
     }
-    
+
     function ProposeTranslations(fromLcid, destLcid) {
         XrmTranslator.LockGrid("Translating...");
-        
+
         var records = XrmTranslator.GetGrid().records;
         var updateRecords = [];
         var translationRequests = [];
-        
+
         var fromIso = GetLanguageIsoByLcid(fromLcid);
         var toIso = GetLanguageIsoByLcid(destLcid);
-        
+
         if (!fromIso || !toIso) {
             XrmTranslator.UnlockGrid();
-            
+
             w2alert("Could not find source or target language mapping, source iso:" + fromIso + ", target iso: " + toIso);
-            
+
             return;
         }
-        
+
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
-            
+
             // If original record had translation set and it was not cleared by pending changes, we skip this record
             if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
                 continue;
             }
-            
+
             updateRecords.push(record);
             translationRequests.push(GetTranslation(fromIso, toIso, record[fromLcid]));
         }
-        
+
         Promise.all(translationRequests)
             .then(function (responses) {
                 AddTranslations(fromLcid, destLcid, updateRecords, responses);
@@ -207,19 +207,19 @@
             })
             .catch(XrmTranslator.errorHandler);
     }
-    
+
     TranslationHandler.ShowTranslationPrompt = function() {
         if (!w2ui.translationPrompt) {
             var languageLcids = [];
-            
+
             for (var i = 0; i < availableLanguages.length; i++) {
                 languageLcids.push(availableLanguages[i].toString());
             }
-            
+
             $().w2form({
                 name: 'translationPrompt',
                 style: 'border: 0px; background-color: transparent;',
-                formHTML: 
+                formHTML:
                     '<div class="w2ui-page page-0">'+
                     '    <div class="w2ui-field">'+
                     '        <label>Source Lcid:</label>'+
@@ -243,8 +243,8 @@
                     { field: 'sourceLcid', type: 'list', required: true, options: { items: languageLcids } }
                 ],
                 actions: {
-                    "ok": function () { 
-                        this.validate(); 
+                    "ok": function () {
+                        this.validate();
                         w2popup.close();
                         ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
                     },
@@ -254,14 +254,14 @@
                 }
             });
         }
-        
+
         $().w2popup('open', {
             title   : 'Choose tranlations source and destination',
             name    : 'translationPopup',
             body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
             style   : 'padding: 15px 0px 0px 0px',
             width   : 500,
-            height  : 300, 
+            height  : 300,
             showMax : true,
             onToggle: function (event) {
                 $(w2ui.translationPrompt.box).hide();
@@ -278,26 +278,26 @@
             }
         });
     }
-        
+
     TranslationHandler.FillLanguageCodes = function(languages) {
         availableLanguages = languages;
         var grid = XrmTranslator.GetGrid();
-        
+
         var languageCount = languages.length;
-        
+
         // 100% full width, minus length of the schema name grid, divided by number of languages is space left for each language
         var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / languageCount;
-        
+
         for (var i = 0; i < languages.length; i++) {
             var language = languages[i];
-            
-            grid.addColumn({ field: language, caption: language, size: columnWidth + "%", editable: { type: 'text' } });
+
+            grid.addColumn({ field: language, caption: language, size: columnWidth + "%", sortable: true, editable: { type: 'text' } });
             grid.addSearch({ field: language, caption: language, type: 'text' });
         }
-        
+
         return languages;
     }
-    
+
     TranslationHandler.GetAvailableLanguages = function() {
         var request = {
             // Yes, we're abusing it. Might add a function parameter to the request some time
