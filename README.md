@@ -26,31 +26,32 @@ For missing translations, you can click the Auto Translate button, which will tr
 After you did your changes, the save button will be enabled. By clicking it, the labels will be saved to CRM and the entity will be published.
 
 #### Attributes
-![translationdashboard](https://cloud.githubusercontent.com/assets/4287938/22001408/53ac0992-dc45-11e6-8d19-940516221d9f.PNG)
+![attributetranslation](https://cloud.githubusercontent.com/assets/4287938/23101939/9e48451e-f69f-11e6-9572-3480aa0eed8d.PNG)
 
 #### OptionSet Values
-![optionsettranslation](https://cloud.githubusercontent.com/assets/4287938/22116927/58ebb798-de72-11e6-97b2-fff3327acc38.PNG)
+![optiontranslator](https://cloud.githubusercontent.com/assets/4287938/23101940/9e48b558-f69f-11e6-86a6-f1bcbb34fbfe.PNG)
 
 #### Views
-![views](https://cloud.githubusercontent.com/assets/4287938/22352769/d7baed72-e41d-11e6-9aea-c70246cfdf29.PNG)
+![viewtranslator](https://cloud.githubusercontent.com/assets/4287938/23101937/9e46a95c-f69f-11e6-9340-1a810e091140.PNG)
 
 #### System Forms
-![formtranslator](https://cloud.githubusercontent.com/assets/4287938/22186986/dc2bcfd8-e0fe-11e6-9f86-b9b61ddfb8dc.PNG)
+![formhandler](https://cloud.githubusercontent.com/assets/4287938/23101938/9e482f2a-f69f-11e6-909f-619ddfffcdcb.PNG)
 
 Note regarding form translations: Unfortunately the CRM only returns the current user's language labels when retrieving a system form. Other language labels, even if present, are not returned. Therefore the dashboard changes the user language to each installed language and retrieves the form, for being able to display all labels. After having retrieved all of the forms, your user language is restored to your initial value again.
 So please note that you should not abort loading of a form, as you might end up with a different language id (which you can of course just switch back in your options).
 In addition to that, sometimes publishing of CRM forms does not finish, if the UI language does not match the base language. Be sure to upgrade to at least v2.6.0 of this project, because since this version, the UI language is set to the base language before publishing and restored afterwards.
 
 #### System Form Names
-![formmetatranslator](https://cloud.githubusercontent.com/assets/4287938/22621293/abe84faa-eb20-11e6-8d03-f281fadd5ef8.PNG)
+![formmetahandler](https://cloud.githubusercontent.com/assets/4287938/23101941/9e4994f0-f69f-11e6-9c7e-e8d39aa2ce21.PNG)
 
 #### Entity Display (Collection) Names
-![entitytranslator](https://cloud.githubusercontent.com/assets/4287938/22621291/a1596fba-eb20-11e6-82de-f56ac00aca55.PNG)
+![entityhandler](https://cloud.githubusercontent.com/assets/4287938/23101942/9e4cc1ca-f69f-11e6-8e0a-8f040380623a.PNG)
 
 #### Functions
 ##### Find and Replace
 When clicking Find and Replace, you can enter your search text as either regex (JS style) or plain text.
 There is an option for ignoring the case when searching for matches.
+When using it with regular expressions, JS regular expressions are used. This gives you also the possibility for using capture groups and reordering in your replace expression. For example when using find text: ```(Account) (.*)``` and replace text: ```$2 $1``` you can reorder the text, so that `Account Number` becomes `Number Account`.
 
 ![findandreplacestart](https://cloud.githubusercontent.com/assets/4287938/22790460/93e81880-eee6-11e6-87ef-a9761ccd821c.PNG)
 
