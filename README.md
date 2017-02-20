@@ -39,7 +39,8 @@ After you did your changes, the save button will be enabled. By clicking it, the
 
 Note regarding form translations: Unfortunately the CRM only returns the current user's language labels when retrieving a system form. Other language labels, even if present, are not returned. Therefore the dashboard changes the user language to each installed language and retrieves the form, for being able to display all labels. After having retrieved all of the forms, your user language is restored to your initial value again.
 So please note that you should not abort loading of a form, as you might end up with a different language id (which you can of course just switch back in your options).
-In addition to that, sometimes publishing of CRM forms does not finish, if the UI language does not match the base language. Be sure to upgrade to at least v2.6.0 of this project, because since this version, the UI language is set to the base language before publishing and restored afterwards.
+In addition to that, sometimes publishing of CRM forms does not finish, if the UI language does not match the base language. Be sure to upgrade to at least v2.6.1 of this project, because since this version, the UI language is set to the base language before saving and publishing the changes. Your initial language is restored afterwards.
+If you still experience issues with the latest version, please file an issue on GitHub. When publishing should get stuck, publish changes on another entity and try again afterwards.
 
 #### System Form Names
 ![formmetahandler](https://cloud.githubusercontent.com/assets/4287938/23101941/9e4994f0-f69f-11e6-9c7e-e8d39aa2ce21.PNG)
