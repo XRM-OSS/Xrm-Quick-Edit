@@ -442,12 +442,13 @@
 
         var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
 
-        FormHandler.lastId = XrmTranslator.metadata.formid;
-
-        return WebApiClient.Update({
-            entityName: "systemform",
-            entityId: XrmTranslator.metadata.formid,
-            entity: update
+        return XrmTranslator.SetBaseLanguage(XrmTranslator.userId)
+        .then(function() {
+            return WebApiClient.Update({
+                entityName: "systemform",
+                entityId: XrmTranslator.metadata.formid,
+                entity: update
+            });
         })
         .then(function (response){
             XrmTranslator.LockGrid("Publishing");
@@ -455,7 +456,10 @@
             return XrmTranslator.Publish();
         })
         .then(function (response) {
-            return FormHandler.Load()
+            XrmTranslator.LockGrid("Reloading");
+
+            FormHandler.lastId = XrmTranslator.metadata.formid;
+            return FormHandler.Load();
         })
         .catch(XrmTranslator.errorHandler);
     }

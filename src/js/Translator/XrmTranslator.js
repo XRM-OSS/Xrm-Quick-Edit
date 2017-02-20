@@ -108,7 +108,7 @@
         }
 
         XrmTranslator.UnlockGrid();
-    }
+    };
 
     XrmTranslator.SchemaNameComparer = function(e1, e2) {
         if (e1.SchemaName < e2.SchemaName) {
@@ -120,29 +120,32 @@
         }
 
         return 0;
-    }
+    };
 
     XrmTranslator.GetGrid = function() {
         return w2ui.grid;
-    }
+    };
 
     XrmTranslator.LockGrid = function (message) {
         XrmTranslator.GetGrid().lock(message, true);
-    }
+    };
 
     XrmTranslator.UnlockGrid = function () {
         XrmTranslator.GetGrid().unlock();
-    }
+    };
 
     XrmTranslator.SetUserLanguage = function (userId, language) {
         return WebApiClient.Update({
             overriddenSetName: "usersettingscollection",
             entityId: userId,
-            entity: { uilanguageid: language }
+            entity: {
+                uilanguageid: language,
+                helplanguageid: language
+            }
         });
-    }
+    };
 
-    XrmTranslator.Publish = function() {
+    XrmTranslator.SetBaseLanguage = function (userId) {
         return WebApiClient.Retrieve({entityName: "organization"})
             .then(function(orgs) {
                 // Org exists always
@@ -152,8 +155,18 @@
             .then(function(org) {
                 var baseLanguage = org.languagecode;
 
-                return XrmTranslator.SetUserLanguage(XrmTranslator.userId, baseLanguage);
-            })
+                return XrmTranslator.SetUserLanguage(userId, baseLanguage);
+            });
+    };
+
+    XrmTranslator.RestoreUserLanguage = function () {
+        var initialLanguage = XrmTranslator.userSettings.uilanguageid;
+
+        return XrmTranslator.SetUserLanguage(XrmTranslator.userId, initialLanguage);
+    };
+
+    XrmTranslator.Publish = function() {
+        return XrmTranslator.SetBaseLanguage(XrmTranslator.userId)
             .then(function() {
                 var xml = "<importexportxml><entities><entity>" + XrmTranslator.GetEntity().toLowerCase() + "</entity></entities></importexportxml>";
 
@@ -166,9 +179,7 @@
                 return WebApiClient.Execute(request);
             })
             .then(function() {
-                var initialLanguage = XrmTranslator.userSettings.uilanguageid;
-
-                return XrmTranslator.SetUserLanguage(XrmTranslator.userId, initialLanguage);
+                return XrmTranslator.RestoreUserLanguage();
             })
             .catch(XrmTranslator.errorHandler);
     }
