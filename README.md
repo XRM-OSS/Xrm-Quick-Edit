@@ -20,6 +20,8 @@ This is a bug in w2ui and will eventually be fixed.
 ### Translation Management Dashboard
 There will be a column in the translation grid for every language installed in the organization.
 Once the list of entities is loaded, select the one you want to translate, as well as which part.
+For entities and attributes you can even select, whether you want to translate the display names, or the descriptions.
+This does not have an effect on any of the other types right now.
 Just add/change the translations using inline-editing in the grid.
 For missing translations, you can click the Auto Translate button, which will try to find fitting translations and enter them for you. You'll first have to select the source LCID, which is the column name of the column that contains the labels that should be translated and the destination LCID, which is the column name of the column that should be translated automatically.
 
