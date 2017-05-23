@@ -78,6 +78,10 @@
         return w2ui.grid_toolbar.get("type").selected;
     }
 
+    XrmTranslator.GetComponent = function() {
+        return w2ui.grid_toolbar.get("component").selected;
+    }
+
     function SetHandler() {
         if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
@@ -504,6 +508,18 @@
                             { id: 'views', text: 'Views', icon: 'fa-picture' },
                             { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
                             { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
+                        ]
+                    },
+                    { type: 'menu-radio', id: 'component', img: 'icon-folder',
+                        text: function (item) {
+                            var text = item.selected;
+                            var el   = this.get('component:' + item.selected);
+                            return 'Component: ' + el.text;
+                        },
+                        selected: 'DisplayName',
+                        items: [
+                            { id: 'DisplayName', text: 'DisplayName', icon: 'fa-picture' },
+                            { id: 'Description', text: 'Description', icon: 'fa-picture' }
                         ]
                     },
                     { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {

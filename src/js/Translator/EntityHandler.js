@@ -61,7 +61,7 @@
                 var labels = null;
 
                 if (record.schemaName === "Display Name") {
-                    labels = update.DisplayName.LocalizedLabels;
+                    labels = update[XrmTranslator.GetComponent()].LocalizedLabels;
                 } else if (record.schemaName === "Collection Name") {
                     labels = update.DisplayCollectionName.LocalizedLabels;
                 }
@@ -83,7 +83,7 @@
 
         var entity = XrmTranslator.metadata;
 
-        var displayNames = entity.DisplayName.LocalizedLabels;
+        var displayNames = entity[XrmTranslator.GetComponent()].LocalizedLabels;
         var collectionNames = entity.DisplayCollectionName.LocalizedLabels;
 
         if (!displayNames && !collectionNames) {

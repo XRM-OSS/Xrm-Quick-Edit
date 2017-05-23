@@ -59,7 +59,7 @@
 
             if (record.w2ui && record.w2ui.changes) {
                 var attribute = XrmTranslator.GetAttributeById (record.recid);
-                var labels = attribute.DisplayName.LocalizedLabels;
+                var labels = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
 
                 var changes = record.w2ui.changes;
 
@@ -80,7 +80,7 @@
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
 
-            var displayNames = attribute.DisplayName.LocalizedLabels;
+            var displayNames = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
 
             if (!displayNames || displayNames.length === 0) {
                 continue;
