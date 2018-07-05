@@ -396,7 +396,7 @@
             language: initialLanguage
         });
 
-        return Promise.reduce(requests, function(total, request){
+        return WebApiClient.Promise.reduce(requests, function(total, request){
             if (request.action === "Update") {
                 return WebApiClient.Update({
                     overriddenSetName: "usersettingscollection",
@@ -408,7 +408,7 @@
                 });
             }
             else if (request.action === "Retrieve") {
-                return Promise.props({
+                return WebApiClient.Promise.props({
                     forms: WebApiClient.Retrieve(formRequest),
                     languageCode: request.language
                 })

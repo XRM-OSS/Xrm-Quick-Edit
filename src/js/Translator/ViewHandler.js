@@ -134,7 +134,7 @@
                             }
                         })
 
-                    var prop = Promise.props({
+                    var prop = WebApiClient.Promise.props({
                         recid: view.savedqueryid,
                         labels: WebApiClient.Execute(retrieveLabelsRequest)
                     });
@@ -142,7 +142,7 @@
                     requests.push(prop);
                 }
 
-                return Promise.all(requests);
+                return WebApiClient.Promise.all(requests);
             })
             .then(function(responses) {
                     var views = responses;
@@ -177,7 +177,7 @@
             requests.push(request);
         }
 
-        Promise.resolve(requests)
+        WebApiClient.Promise.resolve(requests)
             .each(function(request) {
                 return WebApiClient.Execute(request);
             })

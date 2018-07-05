@@ -110,7 +110,7 @@
     function GetTranslation(fromLanguage, destLanguage, phrase) {
         $.support.cors = true;
 
-        return Promise.resolve($.ajax({
+        return WebApiClient.Promise.resolve($.ajax({
             url: BuildTranslationUrl(fromLanguage, destLanguage, phrase),
             type: "GET",
             crossDomain: true,
@@ -200,7 +200,7 @@
             translationRequests.push(GetTranslation(fromIso, toIso, record[fromLcid]));
         }
 
-        Promise.all(translationRequests)
+        WebApiClient.Promise.all(translationRequests)
             .then(function (responses) {
                 AddTranslations(fromLcid, destLcid, updateRecords, responses);
                 XrmTranslator.UnlockGrid();

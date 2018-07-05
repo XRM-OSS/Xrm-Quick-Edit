@@ -131,7 +131,7 @@
                             }
                         })
 
-                    var prop = Promise.props({
+                    var prop = WebApiClient.Promise.props({
                         recid: form.formid,
                         labels: WebApiClient.Execute(retrieveLabelsRequest)
                     });
@@ -139,7 +139,7 @@
                     requests.push(prop);
                 }
 
-                return Promise.all(requests);
+                return WebApiClient.Promise.all(requests);
             })
             .then(function(responses) {
                     var forms = responses;
@@ -174,7 +174,7 @@
             requests.push(request);
         }
 
-        return Promise.resolve(requests)
+        return WebApiClient.Promise.resolve(requests)
             .each(function(request) {
                 return WebApiClient.Execute(request);
             })

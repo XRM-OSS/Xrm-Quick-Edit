@@ -112,7 +112,7 @@
         var request = {
             entityName: "EntityDefinition",
             entityId: entityMetadataId,
-            queryParams: "/Attributes?$filter=IsCustomizable/Value eq true and IsLogical eq false"
+            queryParams: "/Attributes?$filter=IsCustomizable/Value eq true"
         };
 
         return WebApiClient.Retrieve(request)
@@ -146,7 +146,7 @@
             requests.push(request);
         }
 
-        return Promise.resolve(requests)
+        return WebApiClient.Promise.resolve(requests)
             .each(function(request) {
                 return WebApiClient.SendRequest(request.method, request.url, request.attribute, request.headers);
             })

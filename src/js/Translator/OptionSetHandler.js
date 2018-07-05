@@ -185,7 +185,7 @@
             return OptionSetHandler.Load();
         }
 
-        return Promise.resolve(updates)
+        return WebApiClient.Promise.resolve(updates)
             .each(function(payload) {
                 return WebApiClient.SendRequest("POST", WebApiClient.GetApiUrl() + "UpdateOptionValue", payload);
             })
