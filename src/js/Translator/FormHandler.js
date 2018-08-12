@@ -183,6 +183,7 @@
         var treeWalker = CreateTreeWalker(NodesWithIdAndLabels, XrmTranslator.metadata);
         TraverseTree(treeWalker, records);
 
+        XrmTranslator.AddSummary(records, true);
         grid.add(records);
         grid.unlock();
     }

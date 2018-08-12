@@ -115,6 +115,7 @@
         records.push(singular);
         records.push(plural);
 
+        XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
     }

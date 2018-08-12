@@ -623,6 +623,54 @@
         };
     }
 
+    XrmTranslator.AddSummary = function(records, countChildParents) {
+        var parentCount = records.length;
+        var childCount = records.map(function(r) { return r.w2ui && r.w2ui.children && r.w2ui.children.length; }).reduce(function(a, b) { return a + (b || 0); }, 0);
+
+        var count = 0;
+
+        if (childCount > 0) {
+            count = childCount;
+
+            if (countChildParents) {
+                count += parentCount;
+            }
+        }
+        else {
+            count = parentCount;
+        }
+
+        var summary = {
+            w2ui: { summary: true },
+            recid: 'Summary-1',
+            schemaName: '<span style="float: right;">Of ' + count + ' labels in total</span>'
+        };
+
+        for (var i = 0; i < XrmTranslator.installedLanguages.LocaleIds.length; i++) {
+            var language = XrmTranslator.installedLanguages.LocaleIds[i].toString();
+
+            var translatedParents = records.filter(function(r) { return !!r[language]; }).length;
+            var translatedChildren = records.map(function(r) { return r.w2ui && r.w2ui.children && r.w2ui.children.filter(function(c) { return !!c[language]; })}).reduce(function(a, b) { return a + (b || []).length; }, 0);
+
+            var translatedRecords = 0;
+
+            if (translatedChildren > 0) {
+                translatedRecords = translatedChildren;
+
+                if (countChildParents) {
+                    translatedRecords += translatedParents;
+                }
+            }
+            else {
+                translatedRecords = translatedParents;
+            }
+
+            summary[language] = translatedRecords + " translated (" + (count - translatedRecords) + " untranslated)";
+        }
+
+        records.push(summary);
+    };
+
     XrmTranslator.Initialize = function() {
         InitializeGrid();
         RegisterReloadPrevention();

@@ -149,6 +149,7 @@
             records.push(record);
         }
 
+        XrmTranslator.AddSummary(records);
         grid.add(records);
         grid.unlock();
     }
