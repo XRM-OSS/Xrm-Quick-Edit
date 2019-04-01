@@ -114,6 +114,18 @@
         XrmTranslator.UnlockGrid();
     };
 
+    XrmTranslator.SchemaNameComparer = function(e1, e2) {
+        if (e1.SchemaName < e2.SchemaName) {
+            return -1;
+        }
+
+        if (e1.SchemaName > e2.SchemaName) {
+            return 1;
+        }
+
+        return 0;
+    };
+
     XrmTranslator.EntityComparer = function(e1, e2) {
         var e1localizedLabel = e1.DisplayName.UserLocalizedLabel || {};
         var e2localizedLabel = e2.DisplayName.UserLocalizedLabel || {};
