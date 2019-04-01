@@ -36,6 +36,8 @@
     XrmTranslator.userSettings = null;
     XrmTranslator.installedLanguages = null;
 
+    XrmTranslator.config = null;
+
     var currentHandler = null;
 
     RegExp.escape= function(s) {
@@ -492,6 +494,86 @@
     }
 
     function InitializeGrid (entities) {
+        var items = [
+            { type: 'menu-radio', id: 'entitySelect', img: 'icon-folder',
+                text: function (item) {
+                    var text = item.selected;
+                    var el = this.get('entitySelect:' + item.selected);
+
+                    if (el) {
+                        return 'Entity: ' + el.text;
+                    }
+                    else {
+                        return "Choose entity";
+                    }
+                },
+                items: []
+            },
+            { type: 'menu-radio', id: 'type', img: 'icon-folder',
+                text: function (item) {
+                    var text = item.selected;
+                    var el   = this.get('type:' + item.selected);
+                    return 'Type: ' + el.text;
+                },
+                selected: 'attributes',
+                items: [
+                    { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
+                    { id: 'options', text: 'Options', icon: 'fa-picture' },
+                    { id: 'forms', text: 'Forms', icon: 'fa-picture' },
+                    { id: 'views', text: 'Views', icon: 'fa-picture' },
+                    { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
+                    { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
+                ]
+            },
+            { type: 'menu-radio', id: 'component', img: 'icon-folder',
+                text: function (item) {
+                    var text = item.selected;
+                    var el   = this.get('component:' + item.selected);
+                    return 'Component: ' + el.text;
+                },
+                selected: 'DisplayName',
+                items: [
+                    { id: 'DisplayName', text: 'DisplayName', icon: 'fa-picture' },
+                    { id: 'Description', text: 'Description', icon: 'fa-picture' }
+                ]
+            },
+            { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
+                var entity = XrmTranslator.GetEntity();
+
+                if (!entity || !XrmTranslator.GetType()) {
+                    return;
+                }
+
+                SetHandler();
+
+                XrmTranslator.LockGrid("Loading " + entity + " attributes");
+
+                // Reset column sorting
+                XrmTranslator.GetGrid().sort();
+                currentHandler.Load();
+            } }
+        ];
+
+        if (!XrmTranslator.config.hideAutoTranslate) {
+            items.push({ type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {
+                TranslationHandler.ShowTranslationPrompt();
+            } });
+        }
+
+        items.push({ type: 'menu', id: 'toggle', img: 'icon-folder',
+            text: "Toggle",
+            items: [
+                { type: 'button', text: 'Expand all records', id: 'expandAll' },
+                { type: 'button', text: 'Collapse all records', id: 'collapseAll' }
+            ]
+        });
+
+        if (!XrmTranslator.config.hideFindAndReplace) {
+            items.push({ type: 'button', text: 'Find and Replace', img:'icon-page', id: 'findReplace', onClick: function (event) {
+                OpenFindAndReplaceDialog();
+            } });
+        }
+
         $('#grid').w2grid({
             name: 'grid',
             show: {
@@ -511,78 +593,7 @@
                 currentHandler.Save();
             },
             toolbar: {
-                items: [
-                    { type: 'menu-radio', id: 'entitySelect', img: 'icon-folder',
-                        text: function (item) {
-                            var text = item.selected;
-                            var el = this.get('entitySelect:' + item.selected);
-
-                            if (el) {
-                                return 'Entity: ' + el.text;
-                            }
-                            else {
-                                return "Choose entity";
-                            }
-                        },
-                        items: []
-                    },
-                    { type: 'menu-radio', id: 'type', img: 'icon-folder',
-                        text: function (item) {
-                            var text = item.selected;
-                            var el   = this.get('type:' + item.selected);
-                            return 'Type: ' + el.text;
-                        },
-                        selected: 'attributes',
-                        items: [
-                            { id: 'attributes', text: 'Attributes', icon: 'fa-camera' },
-                            { id: 'options', text: 'Options', icon: 'fa-picture' },
-                            { id: 'forms', text: 'Forms', icon: 'fa-picture' },
-                            { id: 'views', text: 'Views', icon: 'fa-picture' },
-                            { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
-                            { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
-                        ]
-                    },
-                    { type: 'menu-radio', id: 'component', img: 'icon-folder',
-                        text: function (item) {
-                            var text = item.selected;
-                            var el   = this.get('component:' + item.selected);
-                            return 'Component: ' + el.text;
-                        },
-                        selected: 'DisplayName',
-                        items: [
-                            { id: 'DisplayName', text: 'DisplayName', icon: 'fa-picture' },
-                            { id: 'Description', text: 'Description', icon: 'fa-picture' }
-                        ]
-                    },
-                    { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
-                        var entity = XrmTranslator.GetEntity();
-
-                        if (!entity || !XrmTranslator.GetType()) {
-                            return;
-                        }
-
-                        SetHandler();
-
-                        XrmTranslator.LockGrid("Loading " + entity + " attributes");
-
-                        // Reset column sorting
-                        XrmTranslator.GetGrid().sort();
-                        currentHandler.Load();
-                    } },
-                    { type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {
-                        TranslationHandler.ShowTranslationPrompt();
-                    } },
-                    { type: 'menu', id: 'toggle', img: 'icon-folder',
-                        text: "Toggle",
-                        items: [
-                            { type: 'button', text: 'Expand all records', id: 'expandAll' },
-                            { type: 'button', text: 'Collapse all records', id: 'collapseAll' }
-                        ]
-                    },
-                    { type: 'button', text: 'Find and Replace', img:'icon-page', id: 'findReplace', onClick: function (event) {
-                        OpenFindAndReplaceDialog();
-                    } }
-                ],
+                items: items,
                 onClick: function (event) {
                     var target = event.target;
 
@@ -614,27 +625,19 @@
     }
 
     function GetEntities() {
-        return WebApiClient.Retrieve({ overriddenSetName: "webresourceset", entityId: "8AF4EAED-7454-E911-80FA-0050568E4745"})
-        .then(function (result) {
-            var queryParams = "?$select=SchemaName,LogicalName,MetadataId,DisplayName&$filter=IsCustomizable/Value eq true";
-            
-            if (result && result.content) {
-                var config = JSON.parse(atob(result.content));
-                
-                if (config.entityWhitelist && config.entityWhitelist.length) {
-                    var filter = config.entityWhitelist.map(function (e) { return `LogicalName eq '${e}'` }).join(" or ");
+        var queryParams = "?$select=SchemaName,LogicalName,MetadataId,DisplayName&$filter=IsCustomizable/Value eq true";
+        
+        if (XrmTranslator.config.entityWhitelist && XrmTranslator.config.entityWhitelist.length) {
+            var filter = XrmTranslator.config.entityWhitelist.map(function (e) { return `LogicalName eq '${e}'` }).join(" or ");
+            queryParams += ` and (${ filter })`;
+        }
 
-                    queryParams += ` and (${ filter })`;
-                }
-            }
+        var request = {
+            entityName: "EntityDefinition",
+            queryParams: queryParams
+        };
 
-            var request = {
-                entityName: "EntityDefinition",
-                queryParams: queryParams
-            };
-    
-            return WebApiClient.Retrieve(request);
-        });
+        return WebApiClient.Retrieve(request);
     }
 
     function GetUserId() {
@@ -719,34 +722,46 @@
         records.push(summary);
     };
 
+    function FetchConfig() {
+        return WebApiClient.Retrieve({ overriddenSetName: "webresourceset", entityId: "8AF4EAED-7454-E911-80FA-0050568E4745"})
+        .then(function (result) {           
+                var config = JSON.parse(atob(result.content));
+                
+                XrmTranslator.config = config;
+        });
+    }
+
     XrmTranslator.Initialize = function() {
-        InitializeGrid();
-        RegisterReloadPrevention();
+        FetchConfig()
+        .then(function() {
+            InitializeGrid();
+            RegisterReloadPrevention();
 
-        GetUserId()
-            .then(function (response) {
-                XrmTranslator.userId = response.UserId;
+            return GetUserId();
+        })
+        .then(function (response) {
+            XrmTranslator.userId = response.UserId;
 
-                return GetUserSettings(XrmTranslator.userId);
-            })
-            .then(function (response) {
-                XrmTranslator.userSettings = response;
+            return GetUserSettings(XrmTranslator.userId);
+        })
+        .then(function (response) {
+            XrmTranslator.userSettings = response;
 
-                return GetEntities();
-            })
-            .then(function(response) {
-                return FillEntitySelector(response.value);
-            })
-            .then(function () {
-                return TranslationHandler.GetAvailableLanguages();
-            })
-            .then(function(languages) {
-                XrmTranslator.installedLanguages = languages;
-                return TranslationHandler.FillLanguageCodes(languages.LocaleIds);
-            })
-            .then(function () {
-                XrmTranslator.UnlockGrid();
-            })
-            .catch(XrmTranslator.errorHandler);
+            return GetEntities();
+        })
+        .then(function(response) {
+            return FillEntitySelector(response.value);
+        })
+        .then(function () {
+            return TranslationHandler.GetAvailableLanguages();
+        })
+        .then(function(languages) {
+            XrmTranslator.installedLanguages = languages;
+            return TranslationHandler.FillLanguageCodes(languages.LocaleIds);
+        })
+        .then(function () {
+            XrmTranslator.UnlockGrid();
+        })
+        .catch(XrmTranslator.errorHandler);
     }
 } (window.XrmTranslator = window.XrmTranslator || {}));
