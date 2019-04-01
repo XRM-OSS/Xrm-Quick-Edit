@@ -26,6 +26,7 @@
     "use strict";
 
     var availableLanguages = [];
+    var locales = null;
     var languageMappings = null;
     var translationApiUrl = "https://glosbe.com/gapi/translate?from=[sourceLanguage]&dest=[destLanguage]&format=json&phrase=[phrase]&pretty=true&tm=false&callback=?";
 
@@ -208,74 +209,108 @@
             .catch(XrmTranslator.errorHandler);
     }
 
-    TranslationHandler.ShowTranslationPrompt = function() {
-        if (!w2ui.translationPrompt) {
-            var languageLcids = [];
+    function InitializeTranslationPrompt () {
+        if (!w2ui.translationPrompt)
+        {
+            return TranslationHandler.GetLanguageNamesByLcids(availableLanguages)
+            .then(function (locales) {
+                var languageItems = locales.map(function(l) { return { id: l.lcid, text: l.locale } });
 
-            for (var i = 0; i < availableLanguages.length; i++) {
-                languageLcids.push(availableLanguages[i].toString());
-            }
-
-            $().w2form({
-                name: 'translationPrompt',
-                style: 'border: 0px; background-color: transparent;',
-                formHTML:
-                    '<div class="w2ui-page page-0">'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Source Lcid:</label>'+
-                    '        <div>'+
-                    '           <input name="sourceLcid" type="list"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Target Lcid:</label>'+
-                    '        <div>'+
-                    '            <input name="targetLcid" type="list"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '</div>'+
-                    '<div class="w2ui-buttons">'+
-                    '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
-                    '    <button class="w2ui-btn" name="ok">Ok</button>'+
-                    '</div>',
-                fields: [
-                    { field: 'targetLcid', type: 'list', required: true, options: { items: languageLcids } },
-                    { field: 'sourceLcid', type: 'list', required: true, options: { items: languageLcids } }
-                ],
-                actions: {
-                    "ok": function () {
-                        this.validate();
-                        w2popup.close();
-                        ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
-                    },
-                    "cancel": function () {
-                        w2popup.close();
+                $().w2form({
+                    name: 'translationPrompt',
+                    style: 'border: 0px; background-color: transparent;',
+                    formHTML:
+                        '<div class="w2ui-page page-0">'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Source Lcid:</label>'+
+                        '        <div>'+
+                        '           <input name="sourceLcid" type="list"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Target Lcid:</label>'+
+                        '        <div>'+
+                        '            <input name="targetLcid" type="list"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '</div>'+
+                        '<div class="w2ui-buttons">'+
+                        '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                        '    <button class="w2ui-btn" name="ok">Ok</button>'+
+                        '</div>',
+                    fields: [
+                        { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
+                        { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } }
+                    ],
+                    actions: {
+                        "ok": function () {
+                            this.validate();
+                            w2popup.close();
+                            ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
+                        },
+                        "cancel": function () {
+                            w2popup.close();
+                        }
                     }
-                }
+                });
             });
         }
 
-        $().w2popup('open', {
-            title   : 'Choose tranlations source and destination',
-            name    : 'translationPopup',
-            body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
-            style   : 'padding: 15px 0px 0px 0px',
-            width   : 500,
-            height  : 300,
-            showMax : true,
-            onToggle: function (event) {
-                $(w2ui.translationPrompt.box).hide();
-                event.onComplete = function () {
-                    $(w2ui.translationPrompt.box).show();
-                    w2ui.translationPrompt.resize();
+        return Promise.resolve({});
+    }
+
+    TranslationHandler.ShowTranslationPrompt = function() {
+        InitializeTranslationPrompt()
+        .then(function() {
+            $().w2popup('open', {
+                title   : 'Choose tranlations source and destination',
+                name    : 'translationPopup',
+                body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
+                style   : 'padding: 15px 0px 0px 0px',
+                width   : 500,
+                height  : 300,
+                showMax : true,
+                onToggle: function (event) {
+                    $(w2ui.translationPrompt.box).hide();
+                    event.onComplete = function () {
+                        $(w2ui.translationPrompt.box).show();
+                        w2ui.translationPrompt.resize();
+                    }
+                },
+                onOpen: function (event) {
+                    event.onComplete = function () {
+                        // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
+                        $('#w2ui-popup #form').w2render('translationPrompt');
+                    }
                 }
-            },
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
-                    $('#w2ui-popup #form').w2render('translationPrompt');
-                }
-            }
+            });
+        });
+    }
+
+    function GetLocales () {
+        if (locales) {
+            return Promise.resolve(locales);
+        }
+
+        return WebApiClient.Retrieve({overriddenSetName: "languagelocale", queryParams: "?$select=language,localeid,code"})
+        .then(function(result) {
+            locales = result.value;
+
+            return locales;
+        });
+    }
+
+    TranslationHandler.GetLanguageNamesByLcids = function(lcids) {
+        return GetLocales()
+        .then(function (locales) {
+            return lcids.map(function (lcid) {
+                var locale = locales.find(function (l) { return l.localeid == lcid }) || {};
+
+                return {
+                    lcid: lcid,
+                    locale: locale.language || lcid
+                };
+            });
         });
     }
 
@@ -285,25 +320,24 @@
 
         var languageCount = languages.length;
 
-        // 100% full width, minus length of the schema name grid, divided by number of languages is space left for each language
-        var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / languageCount;
+        return GetLocales()
+        .then(function(locales) {
+            // 100% full width, minus length of the schema name grid, divided by number of languages is space left for each language
+            var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / languageCount;
 
-        for (var i = 0; i < languages.length; i++) {
-            var language = languages[i];
+            for (var i = 0; i < languages.length; i++) {
+                var language = languages[i];
+                var locale = locales.find(function (l) { return l.localeid == language }) || {};
 
-            grid.addColumn({ field: language, caption: language, size: columnWidth + "%", sortable: true, editable: { type: 'text' } });
-            grid.addSearch({ field: language, caption: language, type: 'text' });
-        }
+                grid.addColumn({ field: language, caption: locale.language || language, size: columnWidth + "%", sortable: true, editable: { type: 'text' } });
+                grid.addSearch({ field: language, caption: locale.language || language, type: 'text' });
+            }
 
-        return languages;
+            return languages;
+        });
     }
 
     TranslationHandler.GetAvailableLanguages = function() {
-        var request = {
-            // Yes, we're abusing it. Might add a function parameter to the request some time
-            overriddenSetName: "RetrieveAvailableLanguages"
-        };
-
-        return WebApiClient.Retrieve(request);
+        return WebApiClient.Execute(WebApiClient.Requests.RetrieveAvailableLanguagesRequest);
     }
 } (window.TranslationHandler = window.TranslationHandler || {}));

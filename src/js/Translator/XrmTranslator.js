@@ -114,12 +114,18 @@
         XrmTranslator.UnlockGrid();
     };
 
-    XrmTranslator.SchemaNameComparer = function(e1, e2) {
-        if (e1.SchemaName < e2.SchemaName) {
+    XrmTranslator.EntityComparer = function(e1, e2) {
+        var e1localizedLabel = e1.DisplayName.UserLocalizedLabel || {};
+        var e2localizedLabel = e2.DisplayName.UserLocalizedLabel || {};
+
+        var e1compareValue = (e1localizedLabel.Label || e1.SchemaName).toLowerCase();
+        var e2compareValue = (e2localizedLabel.Label || e2.SchemaName).toLowerCase();
+
+        if (e1compareValue < e2compareValue) {
             return -1;
         }
 
-        if (e1.SchemaName > e2.SchemaName) {
+        if (e1compareValue > e2compareValue) {
             return 1;
         }
 
@@ -273,7 +279,8 @@
                 multiSelect: true,
                 columns: [
                     { field: 'schemaName', caption: 'Schema Name', size: '25%', sortable: true, searchable: true },
-                    { field: 'column', caption: 'Column', size: '25%', sortable: true, searchable: true },
+                    { field: 'column', caption: 'Column LCID', sortable: true, searchable: true, hidden: true },
+                    { field: 'columnName', caption: 'Column', size: '25%', sortable: true, searchable: true },
                     { field: 'current', caption: 'Current Text', size: '25%', sortable: true, searchable: true },
                     { field: 'replaced', caption: 'Replaced Text', size: '25%', sortable: true, searchable: true }
                 ],
@@ -313,7 +320,7 @@
         });
     }
 
-    function FindRecords(find, replace, useRegex, ignoreCase, column) {
+    function FindRecords(find, replace, useRegex, ignoreCase, column, columnName) {
         var records = XrmTranslator.GetGrid().records;
         var findings = [];
 
@@ -358,6 +365,7 @@
                 recid: record.recid,
                 schemaName: record.schemaName,
                 column: column,
+                columnName: columnName,
                 current: value,
                 replaced: replaced
             });
@@ -366,7 +374,7 @@
         ShowFindAndReplaceResults(findings);
     }
 
-    function OpenFindAndReplaceDialog () {
+    function InitializeFindAndReplaceDialog() {
         if (!w2ui.findAndReplace) {
             var languageLcids = [];
             var availableLanguages = XrmTranslator.installedLanguages.LocaleIds;
@@ -375,87 +383,99 @@
                 languageLcids.push(availableLanguages[i].toString());
             }
 
-            $().w2form({
-                name: 'findAndReplace',
-                style: 'border: 0px; background-color: transparent;',
-                formHTML:
-                    '<div class="w2ui-page page-0">'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Replace in Column:</label>'+
-                    '        <div>'+
-                    '           <input name="column" type="list"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Find:</label>'+
-                    '        <div>'+
-                    '            <input name="find" type="text"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Replace:</label>'+
-                    '        <div>'+
-                    '            <input name="replace" type="text"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Use Regex:</label>'+
-                    '        <div>'+
-                    '            <input name="regex" type="checkbox"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '    <div class="w2ui-field">'+
-                    '        <label>Ignore Case:</label>'+
-                    '        <div>'+
-                    '            <input name="ignoreCase" type="checkbox"/>'+
-                    '        </div>'+
-                    '    </div>'+
-                    '</div>'+
-                    '<div class="w2ui-buttons">'+
-                    '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
-                    '    <button class="w2ui-btn" name="ok">Ok</button>'+
-                    '</div>',
-                fields: [
-                    { field: 'find', type: 'text', required: true },
-                    { field: 'replace', type: 'text', required: true },
-                    { field: 'regex', type: 'checkbox', required: true },
-                    { field: 'ignoreCase', type: 'checkbox', required: true },
-                    { field: 'column', type: 'list', required: true, options: { items: languageLcids } }
-                ],
-                actions: {
-                    "ok": function () {
-                        this.validate();
-                        w2popup.close();
-                        FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id);
-                    },
-                    "cancel": function () {
-                        w2popup.close();
+            return TranslationHandler.GetLanguageNamesByLcids(languageLcids)
+            .then(function(locales){
+                var languageItems = locales.map(function(l) { return { id: l.lcid, text: l.locale } });
+
+                $().w2form({
+                    name: 'findAndReplace',
+                    style: 'border: 0px; background-color: transparent;',
+                    formHTML:
+                        '<div class="w2ui-page page-0">'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Replace in Column:</label>'+
+                        '        <div>'+
+                        '           <input name="column" type="list"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Find:</label>'+
+                        '        <div>'+
+                        '            <input name="find" type="text"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Replace:</label>'+
+                        '        <div>'+
+                        '            <input name="replace" type="text"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Use Regex:</label>'+
+                        '        <div>'+
+                        '            <input name="regex" type="checkbox"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '    <div class="w2ui-field">'+
+                        '        <label>Ignore Case:</label>'+
+                        '        <div>'+
+                        '            <input name="ignoreCase" type="checkbox"/>'+
+                        '        </div>'+
+                        '    </div>'+
+                        '</div>'+
+                        '<div class="w2ui-buttons">'+
+                        '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                        '    <button class="w2ui-btn" name="ok">Ok</button>'+
+                        '</div>',
+                    fields: [
+                        { field: 'find', type: 'text', required: true },
+                        { field: 'replace', type: 'text', required: true },
+                        { field: 'regex', type: 'checkbox', required: true },
+                        { field: 'ignoreCase', type: 'checkbox', required: true },
+                        { field: 'column', type: 'list', required: true, options: { items: languageItems } }
+                    ],
+                    actions: {
+                        "ok": function () {
+                            this.validate();
+                            w2popup.close();
+                            FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id, this.record.column.text);
+                        },
+                        "cancel": function () {
+                            w2popup.close();
+                        }
                     }
-                }
+                });
             });
         }
 
-        $().w2popup('open', {
-            title   : 'Find and Replace',
-            name    : 'findAndReplacePopup',
-            body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
-            style   : 'padding: 15px 0px 0px 0px',
-            width   : 500,
-            height  : 300,
-            showMax : true,
-            onToggle: function (event) {
-                $(w2ui.findAndReplace.box).hide();
-                event.onComplete = function () {
-                    $(w2ui.findAndReplace.box).show();
-                    w2ui.findAndReplace.resize();
+        return Promise.resolve({});
+    }
+
+    function OpenFindAndReplaceDialog () {
+        InitializeFindAndReplaceDialog()
+        .then(function() {
+            $().w2popup('open', {
+                title   : 'Find and Replace',
+                name    : 'findAndReplacePopup',
+                body    : '<div id="form" style="width: 100%; height: 100%;"></div>',
+                style   : 'padding: 15px 0px 0px 0px',
+                width   : 500,
+                height  : 300,
+                showMax : true,
+                onToggle: function (event) {
+                    $(w2ui.findAndReplace.box).hide();
+                    event.onComplete = function () {
+                        $(w2ui.findAndReplace.box).show();
+                        w2ui.findAndReplace.resize();
+                    }
+                },
+                onOpen: function (event) {
+                    event.onComplete = function () {
+                        // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
+                        $('#w2ui-popup #form').w2render('findAndReplace');
+                    }
                 }
-            },
-            onOpen: function (event) {
-                event.onComplete = function () {
-                    // specifying an onOpen handler instead is equivalent to specifying an onBeforeOpen handler, which would make this code execute too early and hence not deliver.
-                    $('#w2ui-popup #form').w2render('findAndReplace');
-                }
-            }
+            });
         });
     }
 
@@ -567,13 +587,14 @@
     }
 
     function FillEntitySelector (entities) {
-        entities = entities.sort(XrmTranslator.SchemaNameComparer);
+        entities = entities.sort(XrmTranslator.EntityComparer);
         var entitySelect = w2ui.grid_toolbar.get("entitySelect").items;
 
         for (var i = 0; i < entities.length; i++) {
             var entity = entities[i];
 
-            entitySelect.push(entity.SchemaName);
+            var localizedLabel = entity.DisplayName.UserLocalizedLabel || {};
+            entitySelect.push({id: entity.SchemaName, text: localizedLabel.Label ? `${localizedLabel.Label} (${entity.LogicalName})` : entity.LogicalName });
             XrmTranslator.entityMetadata[entity.SchemaName] = entity.MetadataId;
         }
 
@@ -581,12 +602,27 @@
     }
 
     function GetEntities() {
-        var request = {
-            entityName: "EntityDefinition",
-            queryParams: "?$select=SchemaName,MetadataId&$filter=IsCustomizable/Value eq true"
-        };
+        return WebApiClient.Retrieve({ overriddenSetName: "webresourceset", entityId: "8AF4EAED-7454-E911-80FA-0050568E4745"})
+        .then(function (result) {
+            var queryParams = "?$select=SchemaName,LogicalName,MetadataId,DisplayName&$filter=IsCustomizable/Value eq true";
+            
+            if (result && result.content) {
+                var config = JSON.parse(atob(result.content));
+                
+                if (config.entityWhitelist && config.entityWhitelist.length) {
+                    var filter = config.entityWhitelist.map(function (e) { return `LogicalName eq '${e}'` }).join(" or ");
 
-        return WebApiClient.Retrieve(request);
+                    queryParams += ` and (${ filter })`;
+                }
+            }
+
+            var request = {
+                entityName: "EntityDefinition",
+                queryParams: queryParams
+            };
+    
+            return WebApiClient.Retrieve(request);
+        });
     }
 
     function GetUserId() {
