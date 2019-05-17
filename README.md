@@ -16,6 +16,29 @@ After installing the solution (download latest version [here](https://github.com
 When using bulk edit features such as Auto Translate or Find and Replace, be sure to expand all rows. Not expanded rows will not be processed during those features. This is also valid for saving, so be sure that all your changes are visible when saving.
 This is a bug in w2ui and will eventually be fixed.
 
+## Configuration
+There are multiple settings which you can manipulate inside the "oss_/XrmQuickEdit/config/XrmQuickEditConfig.js" webresource.
+
+### entityWhiteList
+Type: Array<string>
+List of entity logical names which should be available in the translation dashboard. Allows all if empty.
+
+### hideAutoTranslate
+Type: boolean
+Define whether to hide the Auto Translate button.
+
+### hideFindAndReplace
+Type: boolean
+Define whether to hide the Find and Replace button.
+
+### hideLanguagesByDefault
+Type: boolean
+Define whether to hide all language columns but the current user's language by default. More columns can then be included in the grid.
+
+### lockedLanguages
+Type: Array<int>
+Locale IDs of Languages that should not be translatable
+
 ## Dashboards
 ### Translation Management Dashboard
 There will be a column in the translation grid for every language installed in the organization.

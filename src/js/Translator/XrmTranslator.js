@@ -610,6 +610,10 @@
     }
 
     function FillEntitySelector (entities) {
+        if (XrmTranslator.config.entityWhitelist && XrmTranslator.config.entityWhitelist.length) {
+            entities = entities.filter(function (e) { return XrmTranslator.config.entityWhitelist.indexOf(e.LogicalName) !== -1 });
+        }
+
         entities = entities.sort(XrmTranslator.EntityComparer);
         var entitySelect = w2ui.grid_toolbar.get("entitySelect").items;
 
@@ -627,11 +631,6 @@
     function GetEntities() {
         var queryParams = "?$select=SchemaName,LogicalName,MetadataId,DisplayName&$filter=IsCustomizable/Value eq true";
         
-        if (XrmTranslator.config.entityWhitelist && XrmTranslator.config.entityWhitelist.length) {
-            var filter = XrmTranslator.config.entityWhitelist.map(function (e) { return `LogicalName eq '${e}'` }).join(" or ");
-            queryParams += ` and (${ filter })`;
-        }
-
         var request = {
             entityName: "EntityDefinition",
             queryParams: queryParams
@@ -757,7 +756,7 @@
         })
         .then(function(languages) {
             XrmTranslator.installedLanguages = languages;
-            return TranslationHandler.FillLanguageCodes(languages.LocaleIds);
+            return TranslationHandler.FillLanguageCodes(languages.LocaleIds, XrmTranslator.userSettings, XrmTranslator.config);
         })
         .then(function () {
             XrmTranslator.UnlockGrid();
