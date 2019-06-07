@@ -178,7 +178,7 @@
             requests.push(request);
         }
 
-        WebApiClient.Promise.resolve(requests)
+        return WebApiClient.Promise.resolve(requests)
             .each(function(request) {
                 return WebApiClient.Execute(request);
             })

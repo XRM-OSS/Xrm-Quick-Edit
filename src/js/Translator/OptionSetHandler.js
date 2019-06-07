@@ -125,6 +125,7 @@
                 recid: attribute.MetadataId,
                 schemaName: attribute.LogicalName,
                 w2ui: {
+                    editable: false,
                     children: []
                 }
             };

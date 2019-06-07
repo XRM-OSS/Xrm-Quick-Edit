@@ -31,6 +31,8 @@
     XrmTranslator.entity = null;
     XrmTranslator.type = null;
 
+    XrmTranslator.lockAcquired = null;
+
     // We need those for the FormHandleer, uilanguageid is current user language, formXml only contains labels for this locale by default
     XrmTranslator.userId = null;
     XrmTranslator.userSettings = null;
@@ -493,6 +495,171 @@
         });
     }
 
+    function IsLockedForUser(entity) {
+        return WebApiClient.Retrieve({
+            entityName: "oss_translationlock",
+            queryParams: "?$select=_ownerid_value&$filter=oss_name eq '" + entity + "'",
+            headers: [
+                { key: "Prefer", value: 'odata.include-annotations="*"' }
+            ]
+        })
+        .then(function (response){
+            if (response.value.length) {
+                return (response.value[0]._ownerid_value.toLowerCase() === Xrm.Page.context.getUserId().replace("{", "").replace("}", "").toLowerCase());
+            }
+            return false;
+        });
+    }
+
+    function AcquireLock() {
+        XrmTranslator.LockGrid("Acquiring lock for entity " + XrmTranslator.GetEntity().toLowerCase());
+
+        const entity = XrmTranslator.GetEntity().toLowerCase();
+
+        if (!entity) {
+            return;
+        }
+
+        return WebApiClient.Create({ 
+            entityName: "oss_translationlock",
+            entity: {
+                oss_name: entity,
+                oss_language: "any"
+            }
+        })
+        .then(function() {
+            XrmTranslator.lockAcquired = true;
+            EnableColumns();
+            XrmTranslator.UnlockGrid();
+        })
+        .catch(function(e) {
+            XrmTranslator.UnlockGrid();
+
+            return WebApiClient.Retrieve({
+                entityName: "oss_translationlock",
+                queryParams: "?$select=_ownerid_value&$filter=oss_name eq '" + entity + "'",
+                headers: [
+                    { key: "Prefer", value: 'odata.include-annotations="*"' }
+                ]
+            })
+            .then(function (response){
+                if (response.value.length) {
+                    if (response.value[0]._ownerid_value.toLowerCase() === Xrm.Page.context.getUserId().replace("{", "").replace("}", "").toLowerCase()) {
+                        XrmTranslator.lockAcquired = true;
+                        EnableColumns();
+                        return null;
+                    }
+                    else {
+                        alert("Failed to acquire lock, it is currently locked by " +  response.value[0]["_ownerid_value@OData.Community.Display.V1.FormattedValue"] + ". Opening in readonly mode.");
+                    }
+                }
+                else {
+                    alert("Failed to acquire lock, error: " + (e.message || e));
+                }
+
+                DisableColumns();
+                return null;
+            });
+        });
+    }
+
+    function ReleaseLock(entity) {
+        if (!entity) {
+            return;
+        }
+
+        const userId = Xrm.Page.context.getUserId().replace("{", "").replace("}", "");
+
+        return WebApiClient.Retrieve({
+            entityName: "oss_translationlock",
+            queryParams: "?$select=oss_translationlockid&$filter=oss_name eq '" + entity + "' and _ownerid_value eq " + userId,
+        })
+        .then(function(response) {
+            const lock = response.value.length ? response.value[0] : null;
+
+            if (!lock) {
+                return null;
+            }
+
+            return WebApiClient.Delete({
+                entityName: "oss_translationlock",
+                entityId: lock.oss_translationlockid
+            });
+        })
+        .then(function(){
+            XrmTranslator.lockAcquired = false;
+            XrmTranslator.GetGrid().refresh();
+        });
+
+    }
+
+    function DisableColumns() {
+        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        XrmTranslator.GetGrid().columns.forEach(c => {
+            if (c["editable"]) {
+                c["editableBackup"] = c["editable"]; delete c["editable"];
+            } 
+        });
+        XrmTranslator.GetGrid().refresh();
+    }
+
+    function EnableColumns() {
+        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        XrmTranslator.GetGrid().columns.forEach(c => { 
+            if (c["editableBackup"]) { 
+                c["editable"] = c["editableBackup"]; delete c["editableBackup"]; 
+            }
+        });
+        XrmTranslator.GetGrid().refresh();
+    }
+
+    function LoadHandler () {
+        var entity = XrmTranslator.GetEntity();
+
+        if (!entity || !XrmTranslator.GetType()) {
+            return;
+        }
+
+        if (XrmTranslator.lockAcquired && entity === XrmTranslator.entity) {
+            LockAndLoad(entity, true);
+        }
+        else {
+            LockAndLoad(entity);
+        }
+    }
+
+    function LockAndLoad (entity, lock) {
+        if (XrmTranslator.config.enableLocking) {
+            IsLockedForUser(entity)
+            .then(function(alreadyLockedByUser) {
+                if(alreadyLockedByUser || lock || confirm("Do you want to lock this entity for translating? If you do not, it will be readonly.")) {
+                    AcquireLock()
+                    .then(function() {
+                        TriggerLoading(entity);
+                    });
+                }
+                else {
+                    DisableColumns();
+                    TriggerLoading(entity);
+                }
+            });
+        }
+        else {
+            TriggerLoading(entity);
+        }
+    }
+    
+    function TriggerLoading(entity) {
+        XrmTranslator.entity = entity;
+        SetHandler();
+
+        XrmTranslator.LockGrid("Loading " + entity + " attributes");
+
+        // Reset column sorting
+        XrmTranslator.GetGrid().sort();
+        currentHandler.Load();
+    }
+
     function InitializeGrid (entities) {
         var items = [
             { type: 'menu-radio', id: 'entitySelect', img: 'icon-folder',
@@ -537,27 +704,25 @@
                     { id: 'Description', text: 'Description', icon: 'fa-picture' }
                 ]
             },
-            { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: function (event) {
-                var entity = XrmTranslator.GetEntity();
-
-                if (!entity || !XrmTranslator.GetType()) {
-                    return;
-                }
-
-                SetHandler();
-
-                XrmTranslator.LockGrid("Loading " + entity + " attributes");
-
-                // Reset column sorting
-                XrmTranslator.GetGrid().sort();
-                currentHandler.Load();
-            } }
+            { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: LoadHandler }
         ];
 
         if (!XrmTranslator.config.hideAutoTranslate) {
             items.push({ type: 'button', id: 'autoTranslate', text: 'Auto Translate', img:'icon-page', onClick: function (event) {
                 TranslationHandler.ShowTranslationPrompt();
             } });
+        }
+
+        if (XrmTranslator.config.enableLocking) {
+            items.push({ type: 'menu', id: 'lockOrUnlock', img: 'w2ui-icon-cross',
+                text: function (name, item) {
+                    return XrmTranslator.lockAcquired ? "Locked" : "Not Locked";
+                },
+                items: [
+                    { type: 'button', id: 'lock', text: 'Lock Entity', img:'w2ui-icon-pencil' },
+                    { type: 'button', id: 'unlock', text: 'Unlock Entity', img:'w2ui-icon-cross' }
+                ]
+            });
         }
 
         items.push({ type: 'menu', id: 'toggle', img: 'icon-folder',
@@ -601,6 +766,16 @@
                         ToggleExpandCollapse(true);
                     } else if (target.indexOf("collapseAll") !== -1) {
                         ToggleExpandCollapse(false);
+                    }
+
+                    switch(event.target) {
+                        case "lockOrUnlock:lock":
+                            LockAndLoad(XrmTranslator.GetEntity(), true);
+                            break;
+                        case "lockOrUnlock:unlock":
+                            ReleaseLock(XrmTranslator.GetEntity())
+                            .then(DisableColumns);
+                            break;
                     }
                 }
             }
