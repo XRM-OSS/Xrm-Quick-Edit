@@ -49,7 +49,7 @@
             MergeLabels: true
         };
 
-        if (attribute.IsGlobal) {
+        if (attribute.GlobalOptionSet && attribute.GlobalOptionSet.IsGlobal) {
             update.OptionSetName = attribute.GlobalOptionSet.Name;
         }
         else {
