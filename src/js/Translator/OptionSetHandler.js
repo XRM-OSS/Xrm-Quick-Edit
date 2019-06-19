@@ -49,12 +49,10 @@
             MergeLabels: true
         };
 
-        if (attribute.GlobalOptionSet) {
+        if (attribute.IsGlobal) {
             update.OptionSetName = attribute.GlobalOptionSet.Name;
         }
-        else{
-            var optionSet = attribute.OptionSet;
-
+        else {
             update.EntityLogicalName = XrmTranslator.GetEntity().toLowerCase();
             update.AttributeLogicalName = attribute.LogicalName;
         }
