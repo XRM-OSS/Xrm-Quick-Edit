@@ -72,7 +72,7 @@
                 var optionSetValue = parseInt(record.schemaName);
                 var changes = record.w2ui.changes;
 
-                if (!optionSetValue) {
+                if (optionSetValue === null || typeof(optionSetValue) === "undefined") {
                     continue;
                 }
 
@@ -82,7 +82,14 @@
                     if (!changes.hasOwnProperty(change)) {
                         continue;
                     }
+
+                    // Skip empty labels
+                    if (!changes[change]) {
+                        continue;
+                    }
+
                     var label = { LanguageCode: change, Label: changes[change] };
+
                     labels.push(label);
                 }
 
@@ -98,6 +105,40 @@
         return updates;
     }
 
+    function HandleOptionSets(attribute, options, records) {
+        if (!options || options.length === 0) {
+            return;
+        }
+
+        var record = {
+            recid: attribute.MetadataId,
+            schemaName: attribute.LogicalName,
+            w2ui: {
+                editable: false,
+                children: []
+            }
+        };
+
+        for (var j = 0; j < options.length; j++) {
+            var option = options[j];
+            var labels = option.Label.LocalizedLabels;
+
+            var child = {
+                recid: record.recid + idSeparator + option.Value,
+                schemaName: option.Value
+            };
+
+            for (var k = 0; k < labels.length; k++) {
+                var label = labels[k];
+                child[label.LanguageCode.toString()] = label.Label;
+            }
+
+            record.w2ui.children.push(child);
+        }
+
+        records.push(record);
+    }
+
     function FillTable () {
         var grid = XrmTranslator.GetGrid();
         grid.clear();
@@ -106,46 +147,20 @@
 
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
-
             var optionSet = attribute.OptionSet;
 
             if (!optionSet) {
                 optionSet = attribute.GlobalOptionSet;
             }
 
-            var options = optionSet.Options;
-
-            if (!options || options.length === 0) {
-                continue;
+            if (!!optionSet.TrueOption) {
+                HandleOptionSets(attribute, [optionSet.TrueOption, optionSet.FalseOption], records);
             }
+            else {
+                var options = optionSet.Options;
 
-            var record = {
-                recid: attribute.MetadataId,
-                schemaName: attribute.LogicalName,
-                w2ui: {
-                    editable: false,
-                    children: []
-                }
-            };
-
-            for (var j = 0; j < options.length; j++) {
-                var option = options[j];
-                var labels = option.Label.LocalizedLabels;
-
-                var child = {
-                    recid: record.recid + idSeparator + option.Value,
-                    schemaName: option.Value
-                };
-
-                for (var k = 0; k < labels.length; k++) {
-                    var label = labels[k];
-                    child[label.LanguageCode.toString()] = label.Label;
-                }
-
-                record.w2ui.children.push(child);
+                HandleOptionSets(attribute, options, records);
             }
-
-            records.push(record);
         }
 
         XrmTranslator.AddSummary(records);
@@ -157,15 +172,23 @@
         var entityName = XrmTranslator.GetEntity();
         var entityMetadataId = XrmTranslator.entityMetadata[entityName];
 
-        var request = {
+        var optionSetRequest = {
             entityName: "EntityDefinition",
             entityId: entityMetadataId,
             queryParams: "/Attributes/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
         };
 
-        return WebApiClient.Retrieve(request)
-            .then(function(response){
-                var attributes = response.value.sort(XrmTranslator.SchemaNameComparer);
+        var booleanRequest = {
+            entityName: "EntityDefinition",
+            entityId: entityMetadataId,
+            queryParams: "/Attributes/Microsoft.Dynamics.CRM.BooleanAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
+        };
+
+        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest)])
+            .then(function(responses){
+                var responseValues = responses[0].value.concat(responses[1].value);
+                var attributes = responseValues.sort(XrmTranslator.SchemaNameComparer);
+
                 XrmTranslator.metadata = attributes;
 
                 FillTable();

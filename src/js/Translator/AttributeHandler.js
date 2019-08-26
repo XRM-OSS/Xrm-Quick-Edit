@@ -31,6 +31,11 @@
                 continue;
             }
 
+            // Skip empty labels
+            if (!changes[change]) {
+                continue;
+            }
+
             for (var i = 0; i < labels.length; i++) {
                 var label = labels[i];
 
