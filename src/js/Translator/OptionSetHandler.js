@@ -184,9 +184,15 @@
             queryParams: "/Attributes/Microsoft.Dynamics.CRM.BooleanAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
         };
 
-        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest)])
+        var statusRequest = {
+            entityName: "EntityDefinition",
+            entityId: entityMetadataId,
+            queryParams: "/Attributes/Microsoft.Dynamics.CRM.StatusAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
+        };
+
+        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest), WebApiClient.Retrieve(statusRequest)])
             .then(function(responses){
-                var responseValues = responses[0].value.concat(responses[1].value);
+                var responseValues = responses[0].value.concat(responses[1].value).concat(responses[2].value);
                 var attributes = responseValues.sort(XrmTranslator.SchemaNameComparer);
 
                 XrmTranslator.metadata = attributes;
