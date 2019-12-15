@@ -89,6 +89,12 @@
                     if (!changes.hasOwnProperty(change)) {
                         continue;
                     }
+
+                    // Skip empty labels
+                    if (!changes[change]) {
+                        continue;
+                    }
+
                     var label = { LanguageCode: change, Text: changes[change] };
                     labels.push(label);
                 }

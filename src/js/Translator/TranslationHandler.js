@@ -314,7 +314,7 @@
         });
     }
 
-    TranslationHandler.FillLanguageCodes = function(languages) {
+    TranslationHandler.FillLanguageCodes = function(languages, userSettings, config) {
         availableLanguages = languages;
         var grid = XrmTranslator.GetGrid();
 
@@ -329,8 +329,14 @@
                 var language = languages[i];
                 var locale = locales.find(function (l) { return l.localeid == language }) || {};
 
-                grid.addColumn({ field: language, caption: locale.language || language, size: columnWidth + "%", sortable: true, editable: { type: 'text' } });
+                var editable = config.lockedLanguages && config.lockedLanguages.indexOf(language) !== -1 ? null : { type: 'text' };
+
+                grid.addColumn({ field: language, caption: locale.language || language, size: columnWidth + "%", sortable: true, editable: editable });
                 grid.addSearch({ field: language, caption: locale.language || language, type: 'text' });
+
+                if (config.hideLanguagesByDefault && language !== userSettings.uilanguageid) {
+                    grid.hideColumn(language);
+                }
             }
 
             return languages;

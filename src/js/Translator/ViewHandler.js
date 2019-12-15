@@ -31,6 +31,11 @@
                 continue;
             }
 
+            // Skip empty labels
+            if (!changes[change]) {
+                continue;
+            }
+
             for (var i = 0; i < labels.length; i++) {
                 var label = labels[i];
 
@@ -178,7 +183,7 @@
             requests.push(request);
         }
 
-        WebApiClient.Promise.resolve(requests)
+        return WebApiClient.Promise.resolve(requests)
             .each(function(request) {
                 return WebApiClient.Execute(request);
             })
