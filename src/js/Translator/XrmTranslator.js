@@ -105,6 +105,9 @@
         else if (XrmTranslator.GetType() === "entityMeta") {
             currentHandler = EntityHandler;
         }
+        else if (XrmTranslator.GetType() === "charts") {
+            currentHandler = ChartHandler;
+        }
     }
 
     XrmTranslator.errorHandler = function(error) {
@@ -689,7 +692,8 @@
                     { id: 'forms', text: 'Forms', icon: 'fa-picture' },
                     { id: 'views', text: 'Views', icon: 'fa-picture' },
                     { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
-                    { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' }
+                    { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' },
+                    { id: 'charts', text: 'Charts', icon: 'fa-picture' },
                 ]
             },
             { type: 'menu-radio', id: 'component', img: 'icon-folder',
