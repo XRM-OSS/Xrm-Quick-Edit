@@ -213,6 +213,30 @@
             .catch(XrmTranslator.errorHandler);
     }
 
+    XrmTranslator.PublishDashboard = function (dashboardIds) {
+        return XrmTranslator.SetBaseLanguage(XrmTranslator.userId)
+            .then(function () {
+
+                var xml = "<importexportxml><dashboards>";
+                for (var i = 0; i < dashboardIds.length; i++) {
+                    xml += `<dashboard>{${dashboardIds[i].recid}}</dashboard>`;
+                }
+                xml += "</dashboards></importexportxml>";
+
+                var request = WebApiClient.Requests.PublishXmlRequest
+                    .with({
+                        payload: {
+                            ParameterXml: xml
+                        }
+                    })
+                return WebApiClient.Execute(request);
+            })
+            .then(function () {
+                return XrmTranslator.RestoreUserLanguage();
+            })
+            .catch(XrmTranslator.errorHandler);
+    }
+
     XrmTranslator.GetRecord = function(records, selector) {
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -677,7 +701,10 @@
                         return "Choose entity";
                     }
                 },
-                items: []
+                items: [
+                    { id: 'none', text: 'Dashboard' },
+                    { text: '--' }
+                ]
             },
             { type: 'menu-radio', id: 'type', img: 'icon-folder',
                 text: function (item) {
@@ -765,6 +792,23 @@
                 items: items,
                 onClick: function (event) {
                     var target = event.target;
+
+                    if (target.startsWith("entitySelect:")) {
+                        if (target === "entitySelect:none") { //Dashboard click
+                            w2ui['grid_toolbar'].disable('type:attributes');
+                            w2ui['grid_toolbar'].disable('type:options');
+                            w2ui['grid_toolbar'].disable('type:views');
+                            w2ui['grid_toolbar'].disable('type:entityMeta');
+                            w2ui['grid_toolbar'].disable('type:charts');
+                        }
+                        else {
+                            w2ui['grid_toolbar'].enable('type:attributes');
+                            w2ui['grid_toolbar'].enable('type:options');
+                            w2ui['grid_toolbar'].enable('type:views');
+                            w2ui['grid_toolbar'].enable('type:entityMeta');
+                            w2ui['grid_toolbar'].enable('type:charts');
+                        }
+                    }
 
                     if (target.indexOf("expandAll") !== -1) {
                         ToggleExpandCollapse(true);

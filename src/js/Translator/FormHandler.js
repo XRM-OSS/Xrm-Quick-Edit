@@ -381,6 +381,10 @@
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
 
+        if (entityName.toLowerCase() === "none") {
+            formRequest.queryParams = "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)"
+        }
+
         var languages = XrmTranslator.installedLanguages.LocaleIds;
         var initialLanguage = XrmTranslator.userSettings.uilanguageid;
         var forms = [];
@@ -459,8 +463,13 @@
         })
         .then(function (response){
             XrmTranslator.LockGrid("Publishing");
-
-            return XrmTranslator.Publish();
+            var entityName = XrmTranslator.GetEntity();
+            if (entityName.toLowerCase() === "none") {
+                return XrmTranslator.PublishDashboard([{ recid: XrmTranslator.metadata.formid }]);
+            }
+            else {
+                return XrmTranslator.Publish();
+            }
         })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
