@@ -161,6 +161,9 @@
 
                 return XrmTranslator.Publish();
             })
+            .then(function(response) {
+                return XrmTranslator.AddToSolution(updates.map(u => u.MetadataId), XrmTranslator.ComponentType.Attribute);
+            })
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
 

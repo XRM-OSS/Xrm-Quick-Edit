@@ -462,6 +462,9 @@
 
             return XrmTranslator.Publish();
         })
+        .then(function(response) {
+            return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
+        })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
 

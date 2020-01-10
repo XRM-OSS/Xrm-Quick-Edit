@@ -155,6 +155,9 @@
 
             return XrmTranslator.Publish();
         })
+        .then(function(response) {
+            return XrmTranslator.AddToSolution([XrmTranslator.GetEntityId()], XrmTranslator.ComponentType.Entity);
+        })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
 
