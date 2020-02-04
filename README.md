@@ -39,6 +39,10 @@ Define whether to hide all language columns but the current user's language by d
 Type: Array<int>
 Locale IDs of Languages that should not be translatable
 
+### solutionUniqueName
+Type: string
+If set, components that were translated will be automatically added to the solution with the defined unique name.
+
 ## Dashboards
 ### Translation Management Dashboard
 There will be a column in the translation grid for every language installed in the organization.

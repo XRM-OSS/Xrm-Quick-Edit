@@ -60,6 +60,35 @@
         return update;
     }
 
+    function GetUpdateIds(records) {
+        var optionSets = [];
+        var globalOptionSets = [];
+        var globalOptionSetNames = [];
+
+        for (var i = 0; i < records.length; i++) {
+            var record = records[i];
+
+            if (record.w2ui && record.w2ui.changes) {
+                var recordId = GetRecordId(record.recid);
+                var attribute = XrmTranslator.GetAttributeById (recordId);
+
+                if (attribute.GlobalOptionSet) {
+                    if (globalOptionSets.indexOf(attribute.GlobalOptionSet.MetadataId) === -1) {
+                        globalOptionSets.push(attribute.GlobalOptionSet.MetadataId);
+                        globalOptionSetNames.push(attribute.GlobalOptionSet.Name);
+                    }
+                }
+                else {
+                    if (optionSets.indexOf(recordId) === -1) {
+                        optionSets.push(recordId);
+                    }
+                }
+            }
+        }
+
+        return [optionSets, globalOptionSets, globalOptionSetNames];
+    }
+
     function GetUpdates(records) {
         var updates = [];
 
@@ -207,6 +236,7 @@
 
         var records = XrmTranslator.GetGrid().records;
         var updates = GetUpdates(records);
+        var updateIds = GetUpdateIds(records);
 
         if (!updates || updates.length === 0) {
             XrmTranslator.LockGrid("Reloading");
@@ -221,7 +251,13 @@
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
 
-                return XrmTranslator.Publish();
+                return XrmTranslator.Publish(updateIds[2]);
+            })
+            .then(function(response) {
+                return Promise.all([
+                    XrmTranslator.AddToSolution(updateIds[0], XrmTranslator.ComponentType.Attribute),
+                    XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
+                ])
             })
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");

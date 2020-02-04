@@ -198,6 +198,9 @@
                     return XrmTranslator.Publish();
                 }
             })
+            .then(function(response) {
+                return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm);
+            })
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
 
