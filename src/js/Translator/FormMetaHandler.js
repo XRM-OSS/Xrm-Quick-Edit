@@ -120,6 +120,10 @@
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
 
+        if (entityName.toLowerCase() === "none") {
+            formRequest.queryParams = "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)"
+        }
+
         return WebApiClient.Retrieve(formRequest)
             .then(function(response) {
                 var forms = response.value;
@@ -186,8 +190,13 @@
             })
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
-
-                return XrmTranslator.Publish();
+                var entityName = XrmTranslator.GetEntity();
+                if (entityName.toLowerCase() === "none") {
+                    return XrmTranslator.PublishDashboard(updates);
+                }
+                else {
+                    return XrmTranslator.Publish();
+                }
             })
             .then(function(response) {
                 return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm);
