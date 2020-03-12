@@ -181,23 +181,22 @@
     }
 
     ContentSnippetHandler.Load = function () {
+        XrmTranslator.columnRestoreNeeded = true;
+
         snippets = [];
         websites = [];
         portalLanguages = [];
 
-        var grid = XrmTranslator.GetGrid();
-        var installedLanguages = XrmTranslator.installedLanguages.LocaleIds.map(function (l) { return l.toString() });
+        XrmTranslator.ClearColumns();
 
-        installedLanguages.forEach(function(l) { grid.removeColumn(l) });
-
-        return (portalLanguages.length === 0 ? TranslationHandler.FindPortalLanguages() : Promise.resolve(null))
+        return TranslationHandler.FindPortalLanguages()
         .then(function(languages) {
             if (languages) {
                 portalLanguages = languages;
                 TranslationHandler.FillPortalLanguageCodes(portalLanguages);
             }
 
-            return WebApiClient.Retrieve({entityName: "adx_contentsnippet", queryParams: "?$select=adx_name,adx_value&$filter=_adx_contentsnippetlanguageid_value ne null&$expand=adx_websiteid($select=adx_websiteid,adx_name),adx_contentsnippetlanguageid($select=adx_websitelanguageid)"});
+            return WebApiClient.Retrieve({entityName: "adx_contentsnippet", queryParams: "?$select=adx_name,adx_value&$filter=_adx_contentsnippetlanguageid_value ne null&$expand=adx_websiteid($select=adx_websiteid,adx_name),adx_contentsnippetlanguageid($select=adx_websitelanguageid)&$orderby=adx_name"});
         })
         .then(function(response) {
             snippets = response.value.map(function (s) { s.adx_value = w2utils.encodeTags(s.adx_value); return s; });

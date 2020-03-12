@@ -40,6 +40,8 @@
 
     XrmTranslator.config = null;
 
+    XrmTranslator.columnRestoreNeeded = false;
+
     var currentHandler = null;
 
     RegExp.escape= function(s) {
@@ -776,14 +778,27 @@
     }
     
     function TriggerLoading(entity) {
-        XrmTranslator.entity = entity;
-        SetHandler();
+        let promise = undefined;
 
-        XrmTranslator.LockGrid("Loading " + entity + " attributes");
+        if (XrmTranslator.columnRestoreNeeded) {
+            XrmTranslator.ClearColumns();
+            promise = TranslationHandler.FillLanguageCodes(XrmTranslator.installedLanguages.LocaleIds, XrmTranslator.userSettings, XrmTranslator.config);
+        }
+        else {
+            promise = Promise.resolve(null);
+        }
 
-        // Reset column sorting
-        XrmTranslator.GetGrid().sort();
-        currentHandler.Load();
+        promise.then(function(){
+            XrmTranslator.columnRestoreNeeded = false;
+            XrmTranslator.entity = entity;
+            SetHandler();
+
+            XrmTranslator.LockGrid("Loading " + entity + " attributes");
+
+            // Reset column sorting
+            XrmTranslator.GetGrid().sort();
+            currentHandler.Load();
+        });
     }
 
     function InitializeGrid (entities) {
@@ -909,8 +924,15 @@
                             w2ui['grid_toolbar'].enable('type:entityMeta');
                             w2ui['grid_toolbar'].enable('type:charts');
 
-                            if (target === "entitySelect:adx_contentsnippet") {
+                            if (target === "entitySelect:Adx_contentsnippet") {
                                 w2ui['grid_toolbar'].enable('type:content');
+                            }
+                            else {
+                                if (w2ui.grid_toolbar.get("type").selected === "content") {
+                                    w2ui.grid_toolbar.get("type").selected = "attributes";
+                                    w2ui.grid_toolbar.refresh();
+                                }
+                                w2ui['grid_toolbar'].disable('type:content');
                             }
                         }
                     }
@@ -999,6 +1021,22 @@
                 return warning;
             }
         };
+    }
+
+    XrmTranslator.GetColumns = function (includeSchemaName) {
+        var columns = XrmTranslator.GetGrid().columns.map(function(c) { return c.field; });
+
+        if (includeSchemaName) {
+            return columns;
+        }
+
+        return columns.filter(function(c) { return c !== "schemaName" });
+    }
+
+    XrmTranslator.ClearColumns = function() {
+        var columns = XrmTranslator.GetColumns();
+
+        columns.forEach(function(l) { XrmTranslator.GetGrid().removeColumn(l) });
     }
 
     XrmTranslator.AddSummary = function(records, countChildParents) {

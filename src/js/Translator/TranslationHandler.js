@@ -351,18 +351,12 @@
         var lcids = Object.keys(languages);
         var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / lcids.length;
 
-        var renderer = function(record, index, colIndex) {
-            const value = grid.getCellValue(index, colIndex);
-            return "<div>" + (value || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>";
-        }
-
         for (var i = 0; i < lcids.length; i++) {
             var lcid = lcids[i];
 
             var editable = { type: 'text' };
 
-
-            grid.addColumn({ field: lcid, caption: languages[lcid] || lcid, size: columnWidth + "%", sortable: true, editable: editable, render: renderer });
+            grid.addColumn({ field: lcid, caption: languages[lcid] || lcid, size: columnWidth + "%", sortable: true, editable: editable });
             grid.addSearch({ field: lcid, caption: languages[lcid] || lcid, type: 'text' });
         }
 
