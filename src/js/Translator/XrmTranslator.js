@@ -176,6 +176,9 @@
         else if (XrmTranslator.GetType() === "charts") {
             currentHandler = ChartHandler;
         }
+        else if (XrmTranslator.GetType() === "content") {
+            currentHandler = ContentSnippetHandler;
+        }
     }
 
     XrmTranslator.errorHandler = function(error) {
@@ -817,6 +820,7 @@
                     { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
                     { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' },
                     { id: 'charts', text: 'Charts', icon: 'fa-picture' },
+                    { id: 'content', text: 'Content', icon: 'fa-picture' }
                 ]
             },
             { type: 'menu-radio', id: 'component', img: 'icon-folder',
@@ -896,6 +900,7 @@
                             w2ui['grid_toolbar'].disable('type:views');
                             w2ui['grid_toolbar'].disable('type:entityMeta');
                             w2ui['grid_toolbar'].disable('type:charts');
+                            w2ui['grid_toolbar'].disable('type:content');
                         }
                         else {
                             w2ui['grid_toolbar'].enable('type:attributes');
@@ -903,6 +908,10 @@
                             w2ui['grid_toolbar'].enable('type:views');
                             w2ui['grid_toolbar'].enable('type:entityMeta');
                             w2ui['grid_toolbar'].enable('type:charts');
+
+                            if (target === "entitySelect:adx_contentsnippet") {
+                                w2ui['grid_toolbar'].enable('type:content');
+                            }
                         }
                     }
 

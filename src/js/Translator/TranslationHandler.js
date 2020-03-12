@@ -343,6 +343,45 @@
         });
     }
 
+    TranslationHandler.FillPortalLanguageCodes = function(portalLanguages) {
+        var grid = XrmTranslator.GetGrid();
+
+        var languages = Object.keys(portalLanguages).map(function(k) { return portalLanguages[k] }).reduce(function(all, cur) { if (!all[cur.adx_PortalLanguageId.adx_lcid.toString()]) { all[cur.adx_PortalLanguageId.adx_lcid.toString()] = cur.adx_PortalLanguageId.adx_languagecode; } return all; }, {});
+        
+        var lcids = Object.keys(languages);
+        var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / lcids.length;
+
+        var renderer = function(record, index, colIndex) {
+            const value = grid.getCellValue(index, colIndex);
+            return "<div>" + (value || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>";
+        }
+
+        for (var i = 0; i < lcids.length; i++) {
+            var lcid = lcids[i];
+
+            var editable = { type: 'text' };
+
+
+            grid.addColumn({ field: lcid, caption: languages[lcid] || lcid, size: columnWidth + "%", sortable: true, editable: editable, render: renderer });
+            grid.addSearch({ field: lcid, caption: languages[lcid] || lcid, type: 'text' });
+        }
+
+        return languages;
+    }
+
+    /**
+     * Returns object with adx_websitelanguageid as key and string lcid as value
+     */
+    TranslationHandler.FindPortalLanguages = function () {
+        return WebApiClient.Retrieve({entityName: "adx_websitelanguage", queryParams: "?$select=_adx_websiteid_value&$expand=adx_PortalLanguageId($select=adx_lcid,adx_languagecode,adx_portallanguageid)"})
+        .then(function (r) {
+            return r.value.map(w => ({ id: w.adx_websitelanguageid, data: w }));
+        })
+        .then(function (r) {
+            return r.reduce((all, cur) => { all[cur.id] = cur.data; return all }, {} );
+        });
+    }
+
     TranslationHandler.GetAvailableLanguages = function() {
         return WebApiClient.Execute(WebApiClient.Requests.RetrieveAvailableLanguagesRequest);
     }
