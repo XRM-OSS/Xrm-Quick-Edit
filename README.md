@@ -12,6 +12,13 @@ This is a beta, use at your own risk and export a backup solution before testing
 ## How to use
 After installing the solution (download latest version [here](https://github.com/DigitalFlow/Xrm-Quick-Edit/releases)), there will be some dashboards and their requirements added to your organization.
 
+## Translating Dynamics 365 Portals
+Since v3.7.0, content snippets for Dynamics 365 Portals can be translated as well.
+For doing so, simply choose "Content Snippet (Adx_contentsnippet)" as entity to translate and "Content" as type.
+You will then be able to translate the values of content snippets.
+Be aware that all languages of all websites are added as columns.
+If any values are not saved, you most probably don't have that specific language enabled for the contained website.
+
 ## Precautions
 When using bulk edit features such as Auto Translate or Find and Replace, be sure to expand all rows. Not expanded rows will not be processed during those features. This is also valid for saving, so be sure that all your changes are visible when saving.
 This is a bug in w2ui and will eventually be fixed.
