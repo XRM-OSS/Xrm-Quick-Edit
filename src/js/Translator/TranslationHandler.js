@@ -24,155 +24,171 @@
 */
 (function (TranslationHandler, undefined) {
     "use strict";
-
-    var availableLanguages = [];
+    
     var locales = null;
-    var languageMappings = null;
-    var translationApiUrl = "https://glosbe.com/gapi/translate?from=[sourceLanguage]&dest=[destLanguage]&format=json&phrase=[phrase]&pretty=true&tm=false&callback=?";
+    var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]";
 
-    /// Thanks to http://www.chaholl.com/archive/2013/05/07/iso-639-2-to-windows-lcid-mapping.aspx for the mappings
     function GetLanguageIsoByLcid (lcid) {
-        if (!languageMappings) {
-            languageMappings = {};
-
-            languageMappings[1076] = "afr";
-            languageMappings[1118] = "ara";
-            languageMappings[1068] = "aze";
-            languageMappings[1059] = "bel";
-            languageMappings[1026] = "bul";
-            languageMappings[1027] = "cat";
-            languageMappings[2052] = "zho";
-            languageMappings[1050] = "hrv";
-            languageMappings[1029] = "ces";
-            languageMappings[1030] = "dan";
-            languageMappings[1125] = "div";
-            languageMappings[1043] = "nld";
-            languageMappings[1033] = "eng";
-            languageMappings[1061] = "est";
-            languageMappings[1080] = "fao";
-            languageMappings[1035] = "fin";
-            languageMappings[1036] = "fra";
-            languageMappings[1110] = "glg";
-            languageMappings[1079] = "kat";
-            languageMappings[1031] = "deu";
-            languageMappings[1032] = "ell";
-            languageMappings[1095] = "guj";
-            languageMappings[1037] = "heb";
-            languageMappings[1081] = "hin";
-            languageMappings[1038] = "hun";
-            languageMappings[1039] = "isl";
-            languageMappings[1057] = "ind";
-            languageMappings[1040] = "ita";
-            languageMappings[1041] = "jpn";
-            languageMappings[1099] = "kan";
-            languageMappings[1087] = "kaz";
-            languageMappings[1089] = "swa";
-            languageMappings[1042] = "kor";
-            languageMappings[1088] = "kir";
-            languageMappings[1062] = "lav";
-            languageMappings[1063] = "lit";
-            languageMappings[1071] = "mkd";
-            languageMappings[1086] = "msa";
-            languageMappings[1102] = "mar";
-            languageMappings[1104] = "mon";
-            languageMappings[1044] = "nor";
-            languageMappings[1045] = "pol";
-            languageMappings[1046] = "por";
-            languageMappings[1094] = "pan";
-            languageMappings[1048] = "ron";
-            languageMappings[1049] = "rus";
-            languageMappings[1103] = "san";
-            languageMappings[2074] = "srp";
-            languageMappings[1051] = "slk";
-            languageMappings[1060] = "slv";
-            languageMappings[1034] = "spa";
-            languageMappings[1053] = "swe";
-            languageMappings[1097] = "tam";
-            languageMappings[1092] = "tat";
-            languageMappings[1098] = "tel";
-            languageMappings[1054] = "tha";
-            languageMappings[1055] = "tur";
-            languageMappings[1058] = "ukr";
-            languageMappings[1056] = "urd";
-            languageMappings[1091] = "uzb";
-            languageMappings[1066] = "vie";
+        var locByLocales = locales.find(function(loc) { return loc.localeid === lcid; });
+       
+        if (locByLocales) {
+            return locByLocales.code.substr(0, 2);
         }
 
-        return languageMappings[lcid];
+        var locByColumns = XrmTranslator.GetGrid().columns.find(function(c) { return c.field === lcid});
+
+        if (locByColumns) {
+            return locByColumns.caption.substr(0, 2);
+        }
+
+        return null;
     }
 
-    function BuildTranslationUrl (fromLanguage, destLanguage, phrase) {
+    function BuildTranslationUrl (authKey, fromLanguage, destLanguage, phrase) {
         return translationApiUrl
-            .replace("?from=[sourceLanguage]", "?from=" + fromLanguage)
-            .replace("&dest=[destLanguage]", "&dest=" + destLanguage)
-            .replace("&phrase=[phrase]", "&phrase=" + encodeURIComponent(phrase));
+            .replace("[auth_key]", authKey)
+            .replace("[source_lang]", fromLanguage)
+            .replace("[target_lang]", destLanguage)
+            .replace("[text]", encodeURIComponent(phrase));
     }
 
-    function GetTranslation(fromLanguage, destLanguage, phrase) {
+    function GetTranslation(authKey, fromLanguage, destLanguage, phrase) {
         $.support.cors = true;
 
         return WebApiClient.Promise.resolve($.ajax({
-            url: BuildTranslationUrl(fromLanguage, destLanguage, phrase),
+            url: BuildTranslationUrl(authKey, fromLanguage, destLanguage, phrase),
             type: "GET",
             crossDomain: true,
             dataType: "json"
         }));
     }
 
-    function CapitalizeFirstChar (text) {
-        if (!text) {
-            return "";
-        }
-
-        return text[0].toUpperCase() + text.substring(1);
-    }
-
-    function AddTranslations(fromLcid, destLcid, updateRecords, responses) {
+    TranslationHandler.ApplyTranslations = function (selected, results) {
+        var grid = XrmTranslator.GetGrid();
         var savable = false;
 
-        for (var i = 0; i < responses.length; i++) {
-            var response = responses[i];
+        for (var i = 0; i < selected.length; i++) {
+            var select = selected[i];
 
-            if (response.tuc.length > 0) {
-                var translation = response.tuc[0].phrase.text;
-                var phrase = response.phrase;
+            var result = XrmTranslator.GetByRecId(results, select);
+            var record = XrmTranslator.GetByRecId(grid.records, result.recid);
 
-                var record = XrmTranslator.GetRecord(updateRecords, function (r) {
-                    if (r[fromLcid] === phrase) {
-                        return true;
-                    }
-                    return false;
-                });
-
-                if (!record) {
-                    continue;
-                }
-
-                if (!record.w2ui) {
-                    record["w2ui"] = {};
-                }
-
-                if (!record.w2ui.changes) {
-                    record.w2ui["changes"] = {};
-                }
-
-                record.w2ui.changes[destLcid] = CapitalizeFirstChar(translation);
-
-                savable = true;
-
-                XrmTranslator.GetGrid().refreshRow(record.recid);
+            if (!record) {
+                continue;
             }
+
+            if (!record.w2ui) {
+                record["w2ui"] = {};
+            }
+
+            if (!record.w2ui.changes) {
+                record.w2ui["changes"] = {};
+            }
+
+            record.w2ui.changes[result.column] = (result.w2ui &&result.w2ui.changes) ? result.w2ui.changes.translation : result.translation;
+            savable = true;
+            grid.refreshRow(record.recid);
         }
 
         if (savable) {
             XrmTranslator.SetSaveButtonDisabled(false);
         }
+    }
 
-        return savable;
+    function AddTranslations(fromLcid, destLcid, updateRecords, responses) {
+        var translations = [];
+
+        for (var i = 0; i < updateRecords.length; i++) {
+            var response = responses[i];
+            var updateRecord = updateRecords[i];
+
+            if (response.translations.length > 0) {
+                var translation = response.translations[0].text;
+
+                var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
+
+                if (!record) {
+                    continue;
+                }
+
+                translations.push({
+                    recid: record.recid,
+                    schemaName: record.schemaName,
+                    column: destLcid,
+                    source: record[fromLcid],
+                    translation: translation
+                });
+            }
+        }
+
+        ShowTranslationResults(translations);
+    }
+
+    function ShowTranslationResults (results) {
+        if (!w2ui.translationResultGrid) {
+            var grid = {
+                name: 'translationResultGrid',
+                show: { selectColumn: true },
+                multiSelect: true,
+                columns: [
+                    { field: 'schemaName', caption: 'Schema Name', size: '25%', sortable: true, searchable: true },
+                    { field: 'column', caption: 'Column LCID', sortable: true, searchable: true, hidden: true },
+                    { field: 'source', caption: 'Source Text', size: '25%', sortable: true, searchable: true },
+                    { field: 'translation', caption: 'Translated Text', size: '25%', sortable: true, searchable: true, editable: { type: 'text' } }
+                ],
+                records: []
+            };
+
+            $(function () {
+                // initialization in memory
+                $().w2grid(grid);
+            });
+        }
+
+        w2ui.translationResultGrid.clear();
+        w2ui.translationResultGrid.add(results);
+
+        w2popup.open({
+            title   : 'Apply Translation Results',
+            buttons   : '<button class="w2ui-btn" onclick="w2popup.close();">Cancel</button> '+
+                        '<button class="w2ui-btn" onclick="TranslationHandler.ApplyTranslations(w2ui.translationResultGrid.getSelection(), w2ui.translationResultGrid.records); w2popup.close();">Apply</button>',
+            width   : 900,
+            height  : 600,
+            showMax : true,
+            body    : '<div id="main" style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;"></div>',
+            onOpen  : function (event) {
+                event.onComplete = function () {
+                    $('#w2ui-popup #main').w2render('translationResultGrid');
+                    w2ui.translationResultGrid.selectAll();
+                };
+            },
+            onToggle: function (event) {
+                $(w2ui.translationResultGrid.box).hide();
+                event.onComplete = function () {
+                    $(w2ui.translationResultGrid.box).show();
+                    w2ui.translationResultGrid.resize();
+                }
+            }
+        });
     }
 
     function ProposeTranslations(fromLcid, destLcid) {
         XrmTranslator.LockGrid("Translating...");
+
+        var authKey = XrmTranslator.config.translationApiKey;
+        var authProvider = XrmTranslator.config.translationApiProvider;
+
+        if (!authKey) {
+            XrmTranslator.UnlockGrid();
+            w2alert("Auth Key is missing, please add one in the config web resource");
+            return;
+        }
+
+        if (!authProvider || authProvider.toLowerCase() !== "deepl") {
+            XrmTranslator.UnlockGrid();
+            w2alert("Found not supported or missing auth Provider, please set one in the config web resource (currently only 'DeepL' is supported");
+            return;
+        }
 
         var records = XrmTranslator.GetGrid().records;
         var updateRecords = [];
@@ -192,13 +208,18 @@
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
 
+            // Skip records that have no source text
+            if (!record[fromLcid]) {
+                continue;
+            }
+
             // If original record had translation set and it was not cleared by pending changes, we skip this record
             if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
                 continue;
             }
 
             updateRecords.push(record);
-            translationRequests.push(GetTranslation(fromIso, toIso, record[fromLcid]));
+            translationRequests.push(GetTranslation(authKey, fromIso, toIso, record[fromLcid]));
         }
 
         WebApiClient.Promise.all(translationRequests)
@@ -210,50 +231,63 @@
     }
 
     function InitializeTranslationPrompt () {
+        var languageItems = [];
+        var availableLanguages = XrmTranslator.GetGrid().columns;
+
+        for (var i = 0; i < availableLanguages.length; i++) {
+            if (availableLanguages[i].field === "schemaName") {
+                continue;
+            }
+
+            languageItems.push({ id: availableLanguages[i].field, text: availableLanguages[i].caption });
+        }
+
         if (!w2ui.translationPrompt)
         {
-            return TranslationHandler.GetLanguageNamesByLcids(availableLanguages)
-            .then(function (locales) {
-                var languageItems = locales.map(function(l) { return { id: l.lcid, text: l.locale } });
-
-                $().w2form({
-                    name: 'translationPrompt',
-                    style: 'border: 0px; background-color: transparent;',
-                    formHTML:
-                        '<div class="w2ui-page page-0">'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Source Lcid:</label>'+
-                        '        <div>'+
-                        '           <input name="sourceLcid" type="list"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Target Lcid:</label>'+
-                        '        <div>'+
-                        '            <input name="targetLcid" type="list"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '</div>'+
-                        '<div class="w2ui-buttons">'+
-                        '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
-                        '    <button class="w2ui-btn" name="ok">Ok</button>'+
-                        '</div>',
-                    fields: [
-                        { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
-                        { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } }
-                    ],
-                    actions: {
-                        "ok": function () {
-                            this.validate();
-                            w2popup.close();
-                            ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
-                        },
-                        "cancel": function () {
-                            w2popup.close();
-                        }
+            $().w2form({
+                name: 'translationPrompt',
+                style: 'border: 0px; background-color: transparent;',
+                formHTML:
+                    '<div class="w2ui-page page-0">'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Source Lcid:</label>'+
+                    '        <div>'+
+                    '           <input name="sourceLcid" type="list"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Target Lcid:</label>'+
+                    '        <div>'+
+                    '            <input name="targetLcid" type="list"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '</div>'+
+                    '<div class="w2ui-buttons">'+
+                    '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                    '    <button class="w2ui-btn" name="ok">Ok</button>'+
+                    '</div>',
+                fields: [
+                    { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
+                    { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } }
+                ],
+                actions: {
+                    "ok": function () {
+                        this.validate();
+                        w2popup.close();
+                        ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
+                    },
+                    "cancel": function () {
+                        w2popup.close();
                     }
-                });
+                }
             });
+        }
+        else {
+            // Columns will be different when user switches to portal content snippet or back from it, we need to make sure columns always match current grid columns
+            w2ui.translationPrompt.fields[0].options.items = languageItems;
+            w2ui.translationPrompt.fields[1].options.items = languageItems;
+            
+            w2ui.translationPrompt.refresh();
         }
 
         return Promise.resolve({});
@@ -315,7 +349,6 @@
     }
 
     TranslationHandler.FillLanguageCodes = function(languages, userSettings, config) {
-        availableLanguages = languages;
         var grid = XrmTranslator.GetGrid();
 
         var languageCount = languages.length;

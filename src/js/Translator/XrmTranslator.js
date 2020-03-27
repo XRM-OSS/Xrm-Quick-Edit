@@ -405,7 +405,7 @@
                 record.w2ui["changes"] = {};
             }
 
-            record.w2ui.changes[result.column] = result.replaced;
+            record.w2ui.changes[result.column] = (result.w2ui &&result.w2ui.changes) ? result.w2ui.changes.replaced : result.replaced;
             savable = true;
             grid.refreshRow(record.recid);
         }
@@ -426,7 +426,7 @@
                     { field: 'column', caption: 'Column LCID', sortable: true, searchable: true, hidden: true },
                     { field: 'columnName', caption: 'Column', size: '25%', sortable: true, searchable: true },
                     { field: 'current', caption: 'Current Text', size: '25%', sortable: true, searchable: true },
-                    { field: 'replaced', caption: 'Replaced Text', size: '25%', sortable: true, searchable: true }
+                    { field: 'replaced', caption: 'Replaced Text', size: '25%', sortable: true, searchable: true, editable: { type: 'text' } }
                 ],
                 records: []
             };
@@ -519,77 +519,82 @@
     }
 
     function InitializeFindAndReplaceDialog() {
-        if (!w2ui.findAndReplace) {
-            var languageLcids = [];
-            var availableLanguages = XrmTranslator.installedLanguages.LocaleIds;
+        var languageItems = [];
+        var availableLanguages = XrmTranslator.GetGrid().columns;
 
-            for (var i = 0; i < availableLanguages.length; i++) {
-                languageLcids.push(availableLanguages[i].toString());
+        for (var i = 0; i < availableLanguages.length; i++) {
+            if (availableLanguages[i].field === "schemaName") {
+                continue;
             }
 
-            return TranslationHandler.GetLanguageNamesByLcids(languageLcids)
-            .then(function(locales){
-                var languageItems = locales.map(function(l) { return { id: l.lcid, text: l.locale } });
-
-                $().w2form({
-                    name: 'findAndReplace',
-                    style: 'border: 0px; background-color: transparent;',
-                    formHTML:
-                        '<div class="w2ui-page page-0">'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Replace in Column:</label>'+
-                        '        <div>'+
-                        '           <input name="column" type="list"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Find:</label>'+
-                        '        <div>'+
-                        '            <input name="find" type="text"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Replace:</label>'+
-                        '        <div>'+
-                        '            <input name="replace" type="text"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Use Regex:</label>'+
-                        '        <div>'+
-                        '            <input name="regex" type="checkbox"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '    <div class="w2ui-field">'+
-                        '        <label>Ignore Case:</label>'+
-                        '        <div>'+
-                        '            <input name="ignoreCase" type="checkbox"/>'+
-                        '        </div>'+
-                        '    </div>'+
-                        '</div>'+
-                        '<div class="w2ui-buttons">'+
-                        '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
-                        '    <button class="w2ui-btn" name="ok">Ok</button>'+
-                        '</div>',
-                    fields: [
-                        { field: 'find', type: 'text', required: true },
-                        { field: 'replace', type: 'text', required: true },
-                        { field: 'regex', type: 'checkbox', required: true },
-                        { field: 'ignoreCase', type: 'checkbox', required: true },
-                        { field: 'column', type: 'list', required: true, options: { items: languageItems } }
-                    ],
-                    actions: {
-                        "ok": function () {
-                            this.validate();
-                            w2popup.close();
-                            FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id, this.record.column.text);
-                        },
-                        "cancel": function () {
-                            w2popup.close();
-                        }
+            languageItems.push({ id: availableLanguages[i].field, text: availableLanguages[i].caption });
+        }
+        
+        if (!w2ui.findAndReplace) {
+            $().w2form({
+                name: 'findAndReplace',
+                style: 'border: 0px; background-color: transparent;',
+                formHTML:
+                    '<div class="w2ui-page page-0">'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Replace in Column:</label>'+
+                    '        <div>'+
+                    '           <input name="column" type="list"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Find:</label>'+
+                    '        <div>'+
+                    '            <input name="find" type="text"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Replace:</label>'+
+                    '        <div>'+
+                    '            <input name="replace" type="text"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Use Regex:</label>'+
+                    '        <div>'+
+                    '            <input name="regex" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Ignore Case:</label>'+
+                    '        <div>'+
+                    '            <input name="ignoreCase" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
+                    '</div>'+
+                    '<div class="w2ui-buttons">'+
+                    '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
+                    '    <button class="w2ui-btn" name="ok">Ok</button>'+
+                    '</div>',
+                fields: [
+                    { field: 'find', type: 'text', required: true },
+                    { field: 'replace', type: 'text', required: true },
+                    { field: 'regex', type: 'checkbox', required: true },
+                    { field: 'ignoreCase', type: 'checkbox', required: true },
+                    { field: 'column', type: 'list', required: true, options: { items: languageItems } }
+                ],
+                actions: {
+                    "ok": function () {
+                        this.validate();
+                        w2popup.close();
+                        FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id, this.record.column.text);
+                    },
+                    "cancel": function () {
+                        w2popup.close();
                     }
-                });
+                }
             });
+        }
+        else {
+            // Columns will be different when user switches to portal content snippet or back from it, we need to make sure columns always match current grid columns
+            w2ui.findAndReplace.fields[4].options.items = languageItems;
+            
+            w2ui.findAndReplace.refresh();
         }
 
         return Promise.resolve({});
