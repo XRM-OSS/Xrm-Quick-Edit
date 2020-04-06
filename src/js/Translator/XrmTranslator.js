@@ -644,12 +644,32 @@
         });
     }
 
+    function DisableColumns() {
+        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        XrmTranslator.GetGrid().columns.forEach(c => {
+            if (c["editable"]) {
+                c["editableBackup"] = c["editable"]; delete c["editable"];
+            } 
+        });
+        XrmTranslator.GetGrid().refresh();
+    }
+
+    function EnableColumns() {
+        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        XrmTranslator.GetGrid().columns.forEach(c => { 
+            if (c["editableBackup"]) { 
+                c["editable"] = c["editableBackup"]; delete c["editableBackup"]; 
+            }
+        });
+        XrmTranslator.GetGrid().refresh();
+    }
+
     function AcquireLock() {
         XrmTranslator.LockGrid("Acquiring lock for entity " + XrmTranslator.GetEntity().toLowerCase());
 
         const entity = XrmTranslator.GetEntity().toLowerCase();
 
-        if (!entity) {
+        if (!entity || entity === "none") {
             return;
         }
 
@@ -697,7 +717,7 @@
     }
 
     function ReleaseLock(entity) {
-        if (!entity) {
+        if (!entity || entity.toLowerCase() === "none") {
             return;
         }
 
@@ -722,29 +742,31 @@
         .then(function(){
             XrmTranslator.lockAcquired = false;
             XrmTranslator.GetGrid().refresh();
-        });
-
+        })
+        .then(DisableColumns);
     }
 
-    function DisableColumns() {
-        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
-        XrmTranslator.GetGrid().columns.forEach(c => {
-            if (c["editable"]) {
-                c["editableBackup"] = c["editable"]; delete c["editable"];
-            } 
-        });
-        XrmTranslator.GetGrid().refresh();
-    }
+    XrmTranslator.ReleaseLockAndPrompt = function(entity) {
+        if (!XrmTranslator.config.enableLocking || !XrmTranslator.config.autoRelease) {
+            return Promise.resolve(null);
+        }
 
-    function EnableColumns() {
-        XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
-        XrmTranslator.GetGrid().columns.forEach(c => { 
-            if (c["editableBackup"]) { 
-                c["editable"] = c["editableBackup"]; delete c["editableBackup"]; 
+        return ReleaseLock(entity || XrmTranslator.GetEntity())
+        .then(function() {
+            return new Promise(function(resolve, reject) {
+                w2confirm("Saving is done and your lock was released.\nDo you want to reaquire your lock to continue editing?", function (answer) {
+                    resolve(answer === "Yes");
+                });
+            });
+        })
+        .then(function(reacquireLock) {
+            if (reacquireLock) {
+                return AcquireLock();
             }
+
+            return null;
         });
-        XrmTranslator.GetGrid().refresh();
-    }
+    };
 
     function LoadHandler () {
         var entity = XrmTranslator.GetEntity();
@@ -772,6 +794,9 @@
                     });
                 }
                 else {
+                    XrmTranslator.lockAcquired = false;
+                    // Refresh when moving from locked to unlocked entity and not choosing to lock
+                    w2ui.grid_toolbar.refresh();
                     DisableColumns();
                     TriggerLoading(entity);
                 }
@@ -865,7 +890,7 @@
         }
 
         if (XrmTranslator.config.enableLocking) {
-            items.push({ type: 'menu', id: 'lockOrUnlock', img: 'w2ui-icon-cross',
+            items.push({ type: 'menu-radio', id: 'lockOrUnlock', img: 'w2ui-icon-cross',
                 text: function (name, item) {
                     return XrmTranslator.lockAcquired ? "Locked" : "Not Locked";
                 },
@@ -954,7 +979,6 @@
                             break;
                         case "lockOrUnlock:unlock":
                             ReleaseLock(XrmTranslator.GetEntity())
-                            .then(DisableColumns);
                             break;
                     }
                 }

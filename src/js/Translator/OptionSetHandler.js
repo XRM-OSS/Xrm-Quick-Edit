@@ -259,6 +259,9 @@
                     XrmTranslator.AddToSolution(updateIds[1], XrmTranslator.ComponentType.OptionSet, true, true)
                 ])
             })
+            .then(function(response) {
+                return XrmTranslator.ReleaseLockAndPrompt();
+            })
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");
 

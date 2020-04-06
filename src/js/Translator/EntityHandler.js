@@ -158,6 +158,9 @@
         .then(function(response) {
             return XrmTranslator.AddToSolution([XrmTranslator.GetEntityId()], XrmTranslator.ComponentType.Entity);
         })
+        .then(function(response) {
+            return XrmTranslator.ReleaseLockAndPrompt();
+        })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
 
