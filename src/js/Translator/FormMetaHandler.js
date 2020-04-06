@@ -199,7 +199,12 @@
                 }
             })
             .then(function(response) {
-                return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm);
+                if (XrmTranslator.GetEntity().toLowerCase() === "none") {
+                    return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm, true, true);
+                }
+                else {
+                    return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm);
+                }
             })
             .then(function (response) {
                 XrmTranslator.LockGrid("Reloading");

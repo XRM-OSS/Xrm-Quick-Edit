@@ -472,7 +472,13 @@
             }
         })
         .then(function(response) {
-            return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
+            if (XrmTranslator.GetEntity().toLowerCase() === "none") {
+                // Dashboards can't be added with defined componenent settings or DoNotIncludeSubcomponents flag set to true
+                return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
+            }
+            else {
+                return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm);
+            }
         })
         .then(function (response) {
             XrmTranslator.LockGrid("Reloading");
