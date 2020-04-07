@@ -216,7 +216,7 @@
     ContentSnippetHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
 
-        var records = XrmTranslator.GetGrid().records;
+        var records = XrmTranslator.GetAllRecords();
         var updates = GetUpdates(records);
 
         if (!updates || updates.length === 0) {

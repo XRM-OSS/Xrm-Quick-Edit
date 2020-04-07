@@ -190,7 +190,7 @@
             return;
         }
 
-        var records = XrmTranslator.GetGrid().records;
+        var records = XrmTranslator.GetAllRecords();
         var updateRecords = [];
         var translationRequests = [];
 

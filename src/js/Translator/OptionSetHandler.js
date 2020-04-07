@@ -234,7 +234,7 @@
     OptionSetHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
 
-        var records = XrmTranslator.GetGrid().records;
+        var records = XrmTranslator.GetAllRecords();
         var updates = GetUpdates(records);
         var updateIds = GetUpdateIds(records);
 

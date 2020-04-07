@@ -465,7 +465,7 @@
     }
 
     function FindRecords(find, replace, useRegex, ignoreCase, column, columnName) {
-        var records = XrmTranslator.GetGrid().records;
+        var records = XrmTranslator.GetAllRecords();
         var findings = [];
 
         var regex = null;
@@ -1051,6 +1051,16 @@
             }
         };
     }
+
+    XrmTranslator.GetAllRecords = function() {
+        var records = XrmTranslator.GetGrid().records;
+
+        var getRecords = function(recs) {
+            return recs.reduce(function(all, cur) { return all.concat([cur, ...getRecords((cur.w2ui && cur.w2ui.children) ? cur.w2ui.children : [])])}, [])
+        };
+
+        return Array.from(new Set(getRecords(records)));
+    };
 
     XrmTranslator.GetColumns = function (includeSchemaName) {
         var columns = XrmTranslator.GetGrid().columns.map(function(c) { return c.field; });

@@ -447,7 +447,7 @@
     FormHandler.Save = function() {
         XrmTranslator.LockGrid("Saving");
 
-        var records = XrmTranslator.GetGrid().records;
+        var records = XrmTranslator.GetAllRecords();
         var formXml = GetParsedForm(XrmTranslator.metadata);
         var updates = GetUpdates(records);
 
