@@ -670,7 +670,7 @@
         const entity = XrmTranslator.GetEntity().toLowerCase();
 
         if (!entity || entity === "none") {
-            return;
+            return Promise.resolve(null);
         }
 
         return WebApiClient.Create({ 
@@ -718,7 +718,7 @@
 
     function ReleaseLock(entity) {
         if (!entity || entity.toLowerCase() === "none") {
-            return;
+            return Promise.resolve(null);
         }
 
         const userId = Xrm.Page.context.getUserId().replace("{", "").replace("}", "");
@@ -754,7 +754,7 @@
         return ReleaseLock(entity || XrmTranslator.GetEntity())
         .then(function() {
             return new Promise(function(resolve, reject) {
-                w2confirm("Saving is done and your lock was released.\nDo you want to reaquire your lock to continue editing?", function (answer) {
+                w2confirm("Saving is done and your lock was released.\nDo you want to reacquire your lock to continue editing?", function (answer) {
                     resolve(answer === "Yes");
                 });
             });
@@ -784,7 +784,7 @@
     }
 
     function LockAndLoad (entity, lock) {
-        if (XrmTranslator.config.enableLocking) {
+        if (XrmTranslator.config.enableLocking && entity && entity.toLowerCase() !== "none") {
             IsLockedForUser(entity)
             .then(function(alreadyLockedByUser) {
                 if(alreadyLockedByUser || lock || confirm("Do you want to lock this entity for translating? If you do not, it will be readonly.")) {
