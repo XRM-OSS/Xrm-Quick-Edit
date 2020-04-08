@@ -865,7 +865,8 @@
                     { id: 'formMeta', text: 'Form Metadata', icon: 'fa-picture' },
                     { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' },
                     { id: 'charts', text: 'Charts', icon: 'fa-picture' },
-                    { id: 'content', text: 'Content', icon: 'fa-picture' }
+                    { id: 'content', text: 'Content', icon: 'fa-picture' },
+                    { id: 'webresources', text: 'Web Resources', icon: 'fa-picture' }
                 ]
             },
             { type: 'menu-radio', id: 'component', img: 'icon-folder',

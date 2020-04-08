@@ -170,6 +170,10 @@
             }
         };
 
+        if (XrmTranslator.config.lockFormCells && name.toLowerCase() === "cell") {
+            gridNode.w2ui.editable = false;
+        }
+
         AttachLabels(node, gridNode);
 
         for (var i = 0; i < FormHandler.selectedForms.length; i++) {
