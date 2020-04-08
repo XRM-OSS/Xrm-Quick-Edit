@@ -669,7 +669,7 @@
 
         const entity = XrmTranslator.GetEntity().toLowerCase();
 
-        if (!entity || entity === "none") {
+        if (!entity) {
             return Promise.resolve(null);
         }
 
@@ -717,7 +717,7 @@
     }
 
     function ReleaseLock(entity) {
-        if (!entity || entity.toLowerCase() === "none") {
+        if (!entity) {
             return Promise.resolve(null);
         }
 
@@ -784,7 +784,7 @@
     }
 
     function LockAndLoad (entity, lock) {
-        if (XrmTranslator.config.enableLocking && entity && entity.toLowerCase() !== "none") {
+        if (XrmTranslator.config.enableLocking && entity) {
             IsLockedForUser(entity)
             .then(function(alreadyLockedByUser) {
                 if(alreadyLockedByUser || lock || confirm("Do you want to lock this entity for translating? If you do not, it will be readonly.")) {
@@ -846,7 +846,7 @@
                     }
                 },
                 items: [
-                    { id: 'none', text: 'Dashboard' },
+                    { id: 'dashboard', text: 'Dashboard' },
                     { text: '--' }
                 ]
             },
@@ -939,7 +939,7 @@
                     var target = event.target;
 
                     if (target.startsWith("entitySelect:")) {
-                        if (target === "entitySelect:none") { //Dashboard click
+                        if (target === "entitySelect:dashboard") { //Dashboard click
                             w2ui['grid_toolbar'].disable('type:attributes');
                             w2ui['grid_toolbar'].disable('type:options');
                             w2ui['grid_toolbar'].disable('type:views');

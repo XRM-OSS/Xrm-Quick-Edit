@@ -72,7 +72,7 @@
                 var recordId = GetRecordId(record.recid);
                 var attribute = XrmTranslator.GetAttributeById (recordId);
 
-                if (attribute.GlobalOptionSet) {
+                if (attribute.GlobalOptionSet && attribute.GlobalOptionSet.IsGlobal) {
                     if (globalOptionSets.indexOf(attribute.GlobalOptionSet.MetadataId) === -1) {
                         globalOptionSets.push(attribute.GlobalOptionSet.MetadataId);
                         globalOptionSetNames.push(attribute.GlobalOptionSet.Name);
