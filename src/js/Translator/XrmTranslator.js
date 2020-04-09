@@ -37,6 +37,7 @@
     XrmTranslator.userId = null;
     XrmTranslator.userSettings = null;
     XrmTranslator.installedLanguages = null;
+    XrmTranslator.baseLanguage = null;
 
     XrmTranslator.config = null;
 
@@ -163,7 +164,7 @@
         else if (XrmTranslator.GetType() === "options") {
             currentHandler = OptionSetHandler;
         }
-        else if (XrmTranslator.GetType() === "forms") {
+        else if (["forms", "dashboards"].indexOf(XrmTranslator.GetType()) !== -1) {
             currentHandler = FormHandler;
         }
         else if (XrmTranslator.GetType() === "views") {
@@ -180,6 +181,9 @@
         }
         else if (XrmTranslator.GetType() === "content") {
             currentHandler = ContentSnippetHandler;
+        }
+        else if (XrmTranslator.GetType() === "webresources") {
+            currentHandler = WebResourceHandler;
         }
     }
 
@@ -247,18 +251,27 @@
         });
     };
 
-    XrmTranslator.SetBaseLanguage = function (userId) {
-        return WebApiClient.Retrieve({entityName: "organization"})
-            .then(function(orgs) {
-                // Org exists always
-                var org = orgs.value[0];
-                return org;
-            })
-            .then(function(org) {
-                var baseLanguage = org.languagecode;
+    XrmTranslator.GetBaseLanguage = function() {
+        if (XrmTranslator.baseLanguage) {
+            return Promise.resolve(XrmTranslator.baseLanguage);
+        }
 
-                return XrmTranslator.SetUserLanguage(userId, baseLanguage);
-            });
+        return WebApiClient.Retrieve({entityName: "organization"})
+        .then(function(orgs) {
+            // Org exists always
+            var org = orgs.value[0];
+
+            XrmTranslator.baseLanguage = org.languagecode;
+            
+            return org.languagecode;
+        });
+    };
+
+    XrmTranslator.SetBaseLanguage = function (userId) {
+        return XrmTranslator.GetBaseLanguage()
+        .then(function(baseLanguage) {
+            return XrmTranslator.SetUserLanguage(userId, baseLanguage);
+        });
     };
 
     XrmTranslator.RestoreUserLanguage = function () {
@@ -298,6 +311,30 @@
                     xml += `<dashboard>{${dashboardIds[i].recid}}</dashboard>`;
                 }
                 xml += "</dashboards></importexportxml>";
+
+                var request = WebApiClient.Requests.PublishXmlRequest
+                    .with({
+                        payload: {
+                            ParameterXml: xml
+                        }
+                    })
+                return WebApiClient.Execute(request);
+            })
+            .then(function () {
+                return XrmTranslator.RestoreUserLanguage();
+            })
+            .catch(XrmTranslator.errorHandler);
+    }
+
+    XrmTranslator.PublishWebResources = function (webresourceIds) {
+        return XrmTranslator.SetBaseLanguage(XrmTranslator.userId)
+            .then(function () {
+
+                var xml = "<importexportxml><webresources>";
+                for (var i = 0; i < webresourceIds.length; i++) {
+                    xml += "<webresource>" + webresourceIds[i] + "</webresource>";
+                }
+                xml += "</webresources></importexportxml>";
 
                 var request = WebApiClient.Requests.PublishXmlRequest
                     .with({
@@ -845,8 +882,9 @@
                         return "Choose entity";
                     }
                 },
+                selected: "none",
                 items: [
-                    { id: 'dashboard', text: 'Dashboard' },
+                    { id: 'none', text: 'None' },
                     { text: '--' }
                 ]
             },
@@ -866,6 +904,7 @@
                     { id: 'entityMeta', text: 'Entity Metadata', icon: 'fa-picture' },
                     { id: 'charts', text: 'Charts', icon: 'fa-picture' },
                     { id: 'content', text: 'Content', icon: 'fa-picture' },
+                    { id: 'dashboards', text: 'Dashboards', icon: 'fa-picture' },
                     { id: 'webresources', text: 'Web Resources', icon: 'fa-picture' }
                 ]
             },
@@ -940,13 +979,18 @@
                     var target = event.target;
 
                     if (target.startsWith("entitySelect:")) {
-                        if (target === "entitySelect:dashboard") { //Dashboard click
+                        if (target === "entitySelect:none") { //None click
                             w2ui['grid_toolbar'].disable('type:attributes');
                             w2ui['grid_toolbar'].disable('type:options');
                             w2ui['grid_toolbar'].disable('type:views');
                             w2ui['grid_toolbar'].disable('type:entityMeta');
                             w2ui['grid_toolbar'].disable('type:charts');
                             w2ui['grid_toolbar'].disable('type:content');
+                            w2ui['grid_toolbar'].disable('type:forms');
+                            w2ui['grid_toolbar'].disable('type:formMeta');
+
+                            w2ui['grid_toolbar'].enable('type:webresources');
+                            w2ui['grid_toolbar'].enable('type:dashboards');
                         }
                         else {
                             w2ui['grid_toolbar'].enable('type:attributes');
@@ -954,16 +998,21 @@
                             w2ui['grid_toolbar'].enable('type:views');
                             w2ui['grid_toolbar'].enable('type:entityMeta');
                             w2ui['grid_toolbar'].enable('type:charts');
+                            w2ui['grid_toolbar'].enable('type:forms');
+                            w2ui['grid_toolbar'].enable('type:formMeta');
+
+                            w2ui['grid_toolbar'].disable('type:webresources');
+                            w2ui['grid_toolbar'].disable('type:dashboards');
+                            w2ui['grid_toolbar'].disable('type:content');
 
                             if (target === "entitySelect:Adx_contentsnippet") {
                                 w2ui['grid_toolbar'].enable('type:content');
                             }
-                            else {
-                                if (w2ui.grid_toolbar.get("type").selected === "content") {
-                                    w2ui.grid_toolbar.get("type").selected = "attributes";
-                                    w2ui.grid_toolbar.refresh();
-                                }
-                                w2ui['grid_toolbar'].disable('type:content');
+                            
+                            // Switch back to attributes if one of the now disabled options was set
+                            if (["content", "webresources", "dashboards"].indexOf(w2ui.grid_toolbar.get("type").selected) !== -1) {
+                                w2ui.grid_toolbar.get("type").selected = "attributes";
+                                w2ui.grid_toolbar.refresh();
                             }
                         }
                     }
@@ -1138,6 +1187,9 @@
 
     XrmTranslator.Initialize = function() {
         FetchConfig()
+        .then(function() {
+            return XrmTranslator.GetBaseLanguage();
+        })
         .then(function() {
             InitializeGrid();
             RegisterReloadPrevention();

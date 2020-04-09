@@ -120,7 +120,7 @@
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
 
-        if (entityName.toLowerCase() === "dashboard") {
+        if (entityName.toLowerCase() === "none") {
             formRequest.queryParams = "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)"
         }
 
@@ -191,7 +191,7 @@
             .then(function (response){
                 XrmTranslator.LockGrid("Publishing");
                 var entityName = XrmTranslator.GetEntity();
-                if (entityName.toLowerCase() === "dashboard") {
+                if (entityName.toLowerCase() === "none") {
                     return XrmTranslator.PublishDashboard(updates);
                 }
                 else {
@@ -199,7 +199,7 @@
                 }
             })
             .then(function(response) {
-                if (XrmTranslator.GetEntity().toLowerCase() === "dashboard") {
+                if (XrmTranslator.GetEntity().toLowerCase() === "none") {
                     return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm, true, true);
                 }
                 else {

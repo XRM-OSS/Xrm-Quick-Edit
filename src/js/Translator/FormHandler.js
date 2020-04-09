@@ -385,7 +385,7 @@
             queryParams: "?$filter=objecttypecode eq '" + entityName.toLowerCase() + "' and iscustomizable/Value eq true and formactivationstate eq 1"
         };
 
-        if (entityName.toLowerCase() === "dashboard") {
+        if (entityName.toLowerCase() === "none") {
             formRequest.queryParams = "?$filter=formactivationstate eq 1 and iscustomizable/Value eq true and (type eq 0 or type eq 10)"
         }
 
@@ -468,7 +468,7 @@
         .then(function (response){
             XrmTranslator.LockGrid("Publishing");
             var entityName = XrmTranslator.GetEntity();
-            if (entityName.toLowerCase() === "dashboard") {
+            if (entityName.toLowerCase() === "none") {
                 return XrmTranslator.PublishDashboard([{ recid: XrmTranslator.metadata.formid }]);
             }
             else {
@@ -476,7 +476,7 @@
             }
         })
         .then(function(response) {
-            if (XrmTranslator.GetEntity().toLowerCase() === "dashboard") {
+            if (XrmTranslator.GetEntity().toLowerCase() === "none") {
                 // Dashboards can't be added with defined componenent settings or DoNotIncludeSubcomponents flag set to true
                 return XrmTranslator.AddToSolution([XrmTranslator.metadata.formid], XrmTranslator.ComponentType.SystemForm, true, true);
             }
