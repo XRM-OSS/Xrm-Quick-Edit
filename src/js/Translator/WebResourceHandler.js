@@ -141,6 +141,25 @@
         grid.unlock();
     }
 
+    // https://stackoverflow.com/a/30106551
+    function b64EncodeUnicode(str) {
+        // first we use encodeURIComponent to get percent-encoded UTF-8,
+        // then we convert the percent encodings into raw bytes which
+        // can be fed into btoa.
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+                return String.fromCharCode('0x' + p1);
+        }));
+    }
+
+    // https://stackoverflow.com/a/30106551
+    function b64DecodeUnicode(str) {
+        // Going backwards: from bytestream, to percent-encoding, to original string.
+        return decodeURIComponent(atob(str).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    }
+
     WebResourceHandler.Load = function() {
         XrmTranslator.GetBaseLanguage()
         .then(function(baseLanguage) {
@@ -165,7 +184,7 @@
                         value: g.value.map(function(w) {
                             try {
                                 var lcidMatches = w.name.match(lcidRegex);
-                                return Object.assign(w, { content: JSON.parse(atob(w.content)), __lcid: lcidMatches.length > 1 ? lcidMatches[1] : undefined });
+                                return Object.assign(w, { content: JSON.parse(b64DecodeUnicode(w.content)), __lcid: lcidMatches.length > 1 ? lcidMatches[1] : undefined });
                             }
                             catch {
                                 return {};
@@ -177,7 +196,13 @@
         })
         .then(function(responses) {
             var groupedResponses = responses.reduce(function(all, cur) {
-                all[cur.key] = cur.value;
+                // Filter out resources that could not be parsed
+                var resources = cur.value.filter(function(g) { return typeof(g.content) === "object" });
+                
+                if (resources.length > 0) {
+                    all[cur.key] = resources;
+                }
+
                 return all;
             }, {});
 
@@ -196,7 +221,7 @@
 
         return WebApiClient.Promise.resolve(updates)
         .mapSeries(function(webresource) {
-            var content = btoa(JSON.stringify(webresource.content));
+            var content = b64EncodeUnicode(JSON.stringify(webresource.content));
 
             if (webresource.webresourceid) {
                 return WebApiClient.Update({
