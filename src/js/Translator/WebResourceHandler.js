@@ -71,7 +71,7 @@
                     }
 
                     var value = changes[change];
-                    updateRecord.content[property] = value;
+                    updateRecord.content[property] = w2utils.decodeTags(value);
 
                     if (updates.indexOf(updateRecord) === -1) {
                         updates.push(updateRecord);
@@ -98,7 +98,7 @@
                 continue;
             }
             
-            keyRecord[resource.__lcid] = value;
+            keyRecord[resource.__lcid] = w2utils.encodeTags(value);
         }
 
         record.w2ui.children.push(keyRecord);
