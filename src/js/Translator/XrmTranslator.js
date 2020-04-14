@@ -428,7 +428,7 @@
             var select = selected[i];
 
             var result = XrmTranslator.GetByRecId(results, select);
-            var record = XrmTranslator.GetByRecId(grid.records, result.recid);
+            var record = XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), result.recid);
 
             if (!record) {
                 continue;

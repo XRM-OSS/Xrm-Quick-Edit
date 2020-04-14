@@ -26,7 +26,6 @@
     "use strict";
     
     var locales = null;
-    var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]";
 
     function GetLanguageIsoByLcid (lcid) {
         var locByLocales = locales.find(function(loc) { return loc.localeid === lcid; });
@@ -44,24 +43,117 @@
         return null;
     }
 
-    function BuildTranslationUrl (authKey, fromLanguage, destLanguage, phrase) {
-        return translationApiUrl
-            .replace("[auth_key]", authKey)
-            .replace("[source_lang]", fromLanguage)
-            .replace("[target_lang]", destLanguage)
-            .replace("[text]", encodeURIComponent(phrase));
-    }
+    const deeplTranslator = function () {
+        var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]";
 
-    function GetTranslation(authKey, fromLanguage, destLanguage, phrase) {
-        $.support.cors = true;
+        function BuildTranslationUrl (authKey, fromLanguage, destLanguage, phrase) {
+            return translationApiUrl
+                .replace("[auth_key]", authKey)
+                .replace("[source_lang]", fromLanguage)
+                .replace("[target_lang]", destLanguage)
+                .replace("[text]", encodeURIComponent(phrase));
+        }
+    
+        this.GetTranslation = function(authKey, fromLanguage, destLanguage, phrase) {
+            $.support.cors = true;
+    
+            return WebApiClient.Promise.resolve($.ajax({
+                url: BuildTranslationUrl(authKey, fromLanguage, destLanguage, phrase),
+                type: "GET",
+                crossDomain: true,
+                dataType: "json"
+            }));
+        }
+        
+        this.AddTranslations = function(fromLcid, destLcid, updateRecords, responses) {
+            var translations = [];
+    
+            for (var i = 0; i < updateRecords.length; i++) {
+                var response = responses[i];
+                var updateRecord = updateRecords[i];
+    
+                if (response.translations.length > 0) {
+                    var translation = response.translations[0].text;
+    
+                    var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
+    
+                    if (!record) {
+                        continue;
+                    }
+    
+                    translations.push({
+                        recid: record.recid,
+                        schemaName: record.schemaName,
+                        column: destLcid,
+                        source: record[fromLcid],
+                        translation: translation
+                    });
+                }
+            }
 
-        return WebApiClient.Promise.resolve($.ajax({
-            url: BuildTranslationUrl(authKey, fromLanguage, destLanguage, phrase),
-            type: "GET",
-            crossDomain: true,
-            dataType: "json"
-        }));
-    }
+            return translations;
+        }
+    };   
+
+    const azureTranslator = function () {
+        var translationApiUrl = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=[source_lang]&to=[target_lang]";
+
+        function BuildTranslationUrl (fromLanguage, destLanguage) {
+            return translationApiUrl
+                .replace("[source_lang]", fromLanguage)
+                .replace("[target_lang]", destLanguage);
+        }
+    
+        this.GetTranslation = function(authKey, fromLanguage, destLanguage, phrase) {
+            $.support.cors = true;
+
+            return WebApiClient.Promise.resolve($.ajax({
+                url: BuildTranslationUrl(fromLanguage, destLanguage),
+                dataType: "json",
+                contentType: "application/json",
+                type: "POST",
+                data: JSON.stringify([{"Text":phrase}]),
+                crossDomain: true,
+                dataType: "json",
+                headers: {
+                    "Ocp-Apim-Subscription-Key": authKey
+                }
+            }));
+        }
+
+        this.AddTranslations = function(fromLcid, destLcid, updateRecords, responses) {
+            var translations = [];
+    
+            for (var i = 0; i < updateRecords.length; i++) {
+                var response = responses[i][0];
+                var updateRecord = updateRecords[i];
+    
+                if (!response) {
+                    continue;
+                }
+
+                if (response.translations.length > 0) {
+                    var translation = response.translations[0].text;
+    
+                    var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
+    
+                    if (!record) {
+                        continue;
+                    }
+    
+                    translations.push({
+                        recid: record.recid,
+                        schemaName: record.schemaName,
+                        column: destLcid,
+                        source: record[fromLcid],
+                        translation: translation
+                    });
+                }
+            }
+
+            return translations;
+        }
+    };
 
     TranslationHandler.ApplyTranslations = function (selected, results) {
         var grid = XrmTranslator.GetGrid();
@@ -71,7 +163,7 @@
             var select = selected[i];
 
             var result = XrmTranslator.GetByRecId(results, select);
-            var record = XrmTranslator.GetByRecId(grid.records, result.recid);
+            var record = XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), result.recid);
 
             if (!record) {
                 continue;
@@ -93,35 +185,6 @@
         if (savable) {
             XrmTranslator.SetSaveButtonDisabled(false);
         }
-    }
-
-    function AddTranslations(fromLcid, destLcid, updateRecords, responses) {
-        var translations = [];
-
-        for (var i = 0; i < updateRecords.length; i++) {
-            var response = responses[i];
-            var updateRecord = updateRecords[i];
-
-            if (response.translations.length > 0) {
-                var translation = response.translations[0].text;
-
-                var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
-
-                if (!record) {
-                    continue;
-                }
-
-                translations.push({
-                    recid: record.recid,
-                    schemaName: record.schemaName,
-                    column: destLcid,
-                    source: record[fromLcid],
-                    translation: translation
-                });
-            }
-        }
-
-        ShowTranslationResults(translations);
     }
 
     function ShowTranslationResults (results) {
@@ -172,6 +235,17 @@
         });
     }
 
+    function CreateTranslator (apiProvider) {
+        switch ((apiProvider ||"").trim().toLowerCase()) {
+            case "deepl":
+                return new deeplTranslator();
+            case "azure":
+                return new azureTranslator();
+            default:
+                return null;
+        }
+    }
+
     function ProposeTranslations(fromLcid, destLcid) {
         XrmTranslator.LockGrid("Translating...");
 
@@ -184,9 +258,11 @@
             return;
         }
 
-        if (!authProvider || authProvider.toLowerCase() !== "deepl") {
+        var translator = CreateTranslator(authProvider);
+
+        if (!translator) {
             XrmTranslator.UnlockGrid();
-            w2alert("Found not supported or missing auth Provider, please set one in the config web resource (currently only 'DeepL' is supported");
+            w2alert("Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported");
             return;
         }
 
@@ -219,12 +295,12 @@
             }
 
             updateRecords.push(record);
-            translationRequests.push(GetTranslation(authKey, fromIso, toIso, record[fromLcid]));
+            translationRequests.push(translator.GetTranslation(authKey, fromIso, toIso, record[fromLcid]));
         }
 
         WebApiClient.Promise.all(translationRequests)
             .then(function (responses) {
-                AddTranslations(fromLcid, destLcid, updateRecords, responses);
+                ShowTranslationResults(translator.AddTranslations(fromLcid, destLcid, updateRecords, responses));
                 XrmTranslator.UnlockGrid();
             })
             .catch(XrmTranslator.errorHandler);
