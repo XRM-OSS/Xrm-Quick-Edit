@@ -44,7 +44,7 @@
     }
 
     const deeplTranslator = function () {
-        var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]";
+        var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]&tag_handling=xml";
 
         function BuildTranslationUrl (authKey, fromLanguage, destLanguage, phrase) {
             return translationApiUrl
