@@ -73,7 +73,7 @@
                 var updateRecord = updateRecords[i];
     
                 if (response.translations.length > 0) {
-                    var translation = response.translations[0].text;
+                    var translation = w2utils.encodeTags(response.translations[0].text);
     
                     var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
     
@@ -133,7 +133,7 @@
                 }
 
                 if (response.translations.length > 0) {
-                    var translation = response.translations[0].text;
+                    var translation = w2utils.encodeTags(response.translations[0].text);
     
                     var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
     
@@ -295,7 +295,7 @@
             }
 
             updateRecords.push(record);
-            translationRequests.push(translator.GetTranslation(authKey, fromIso, toIso, record[fromLcid]));
+            translationRequests.push(translator.GetTranslation(authKey, fromIso, toIso, w2utils.decodeTags(record[fromLcid])));
         }
 
         WebApiClient.Promise.all(translationRequests)
