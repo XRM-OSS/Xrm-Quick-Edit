@@ -39,7 +39,7 @@
         return id.substring(0, separatorIndex);
     }
 
-    function GetPayload (contentSnippet, websiteId, languageId, value) {
+    function GetPayload (contentSnippet, websiteId, languageId, value, snippetName) {
         if (!websiteId || !languageId) {
             return undefined;
         }
@@ -48,6 +48,7 @@
             entityName: "adx_contentsnippet",
             entityId: contentSnippet ? contentSnippet.adx_contentsnippetid : undefined,
             entity: {
+                adx_name: snippetName,
                 adx_value: w2utils.decodeTags(value),
                 "adx_websiteid@odata.bind": "/adx_websites(" + websiteId + ")",
                 "adx_contentsnippetlanguageid@odata.bind": "/adx_websitelanguages(" + languageId + ")"
@@ -87,7 +88,7 @@
                     }
 
                     var snippet = snippets.find(function(s) { return s.adx_name === snippetName && s.adx_contentsnippetlanguageid && s.adx_contentsnippetlanguageid.adx_websitelanguageid ===  language.adx_websitelanguageid });
-                    var update = GetPayload(snippet, websiteId, language.adx_websitelanguageid, changes[change]);
+                    var update = GetPayload(snippet, websiteId, language.adx_websitelanguageid, changes[change], snippetName);
 
                     if (update) {
                         updates.push(update);

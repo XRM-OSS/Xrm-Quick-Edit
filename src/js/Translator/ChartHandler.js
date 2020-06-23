@@ -169,7 +169,7 @@
                 return XrmTranslator.Publish();
             })
             .then(function(response) {
-                return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SavedQueryVisualization);
+                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SavedQueryVisualization);
             })
             .then(function(response) {
                 return XrmTranslator.ReleaseLockAndPrompt();

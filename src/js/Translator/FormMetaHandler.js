@@ -200,10 +200,10 @@
             })
             .then(function(response) {
                 if (XrmTranslator.GetEntity().toLowerCase() === "none") {
-                    return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm, true, true);
+                    return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SystemForm, true, true);
                 }
                 else {
-                    return XrmTranslator.AddToSolution(updates.map(u => u.recid), XrmTranslator.ComponentType.SystemForm);
+                    return XrmTranslator.AddToSolution(updates.map(function(u) { return u.recid; }), XrmTranslator.ComponentType.SystemForm);
                 }
             })
             .then(function(response) {

@@ -408,6 +408,47 @@
         return XrmTranslator.GetRecord(records, selector);
     };
 
+    function FlattenRecords (recs) {
+        return recs.reduce(function(all, cur) {
+
+            const children = FlattenRecords((cur.w2ui && cur.w2ui.children) ? cur.w2ui.children : []);
+
+            if (children && children.length) {
+                all = all.concat(children);
+            }
+
+            return all.concat([cur]);
+        }, [])
+    };
+
+    XrmTranslator.GetManyByRecId = function (records, recids) {
+        function buildSelector(recid) {
+            return function selector(rec) {
+                if (rec.recid === recid) {
+                    return true;
+                }
+                return false;
+            };
+        }
+
+        var searchRecords = records || XrmTranslator.GetAllRecords();
+
+        return recids.reduce(function(all, cur) {
+            var record = XrmTranslator.GetRecord(searchRecords, buildSelector(cur));
+
+            if (!record) {
+                return all;
+            }
+
+            // Leave out parent nodes that are not editable
+            if (!record.w2ui || record.w2ui.editable == null || record.w2ui.editable) {
+                all.push(record);
+            }
+
+            return all;
+        }, []);
+    };
+
     XrmTranslator.GetAttributeByProperty = function(property, value) {
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
@@ -501,8 +542,15 @@
         });
     }
 
-    function FindRecords(find, replace, useRegex, ignoreCase, column, columnName) {
-        var records = XrmTranslator.GetAllRecords();
+    XrmTranslator.FindRecords = function(records, find, replace, useRegex, ignoreCase, column, columnName, selectRecords) {
+        if (!records && selectRecords) {
+            XrmTranslator.ShowRecordSelector("XrmTranslator.FindRecords", [find, replace, useRegex, ignoreCase, column, columnName, selectRecords]);
+            return;
+        }
+        else if (!records) {
+            records = XrmTranslator.GetAllRecords();
+        }
+
         var findings = [];
 
         var regex = null;
@@ -555,6 +603,83 @@
         ShowFindAndReplaceResults(findings);
     }
 
+    XrmTranslator.ShowRecordSelector = function (callbackName, callbackParameters) {
+        if (!w2ui.recordSelectorGrid) {
+            var grid = {
+                name: 'recordSelectorGrid',
+                show: { selectColumn: true },
+                multiSelect: true,
+                columns: [
+                    { field: 'schemaName', caption: 'Schema Name', size: '100%', sortable: true, searchable: true }
+                ],
+                records: [],
+                onSelect: function(event) {
+                    const record = XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), event.recid);
+
+                    if (record && record.w2ui && record.w2ui.children) {
+                        w2ui.recordSelectorGrid.expand(event.recid);
+                        record.w2ui.children.map(function(c) { return c.recid; }).forEach(function(id) { w2ui.recordSelectorGrid.select(id); });
+                    }
+                },
+                onUnselect: function(event) {
+                    const record = XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), event.recid);
+
+                    if (record && record.w2ui && record.w2ui.children) {
+                        w2ui.recordSelectorGrid.expand(event.recid);
+                        record.w2ui.children.map(function(c) { return c.recid; }).forEach(function(id) { w2ui.recordSelectorGrid.unselect(id); });
+                    }
+                },
+                onExpand: function(event) {
+                    event.onComplete = function() {
+                        const record = XrmTranslator.GetByRecId(XrmTranslator.GetAllRecords(), event.recid);
+
+                        if (record && record.w2ui && record.w2ui.children) {
+                            record.w2ui.children.map(function(c) { return c.recid; }).forEach(function(id) { w2ui.recordSelectorGrid.expand(id); });
+                        }
+                    };
+                },
+                onCollapse: function(event) {
+                    event.preventDefault();
+                }
+            };
+
+            $(function () {
+                // initialization in memory
+                $().w2grid(grid);
+            });
+        }
+
+        w2ui.recordSelectorGrid.reset(true);
+        w2ui.recordSelectorGrid.clear();
+        w2ui.recordSelectorGrid.add(JSON.parse(JSON.stringify(XrmTranslator.GetGrid().records)));
+        w2ui.recordSelectorGrid.refresh();
+
+        var callbackString = (callbackParameters || []).map(function(p) { return typeof(p) === "string" ? "'" + p + "'" : p + ""; }).join(",");
+
+        w2popup.open({
+            title   : 'Select Records',
+            buttons   : '<button class="w2ui-btn" onclick="w2popup.close();">Cancel</button> '+
+                        '<button class="w2ui-btn" onclick="w2popup.close();' + callbackName + '(XrmTranslator.GetManyByRecId(null, w2ui.recordSelectorGrid.getSelection())' + (callbackString ? "," + callbackString : "") + ');">Ok</button>',
+            width   : 900,
+            height  : 600,
+            showMax : true,
+            body    : '<div id="main" style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;"></div>',
+            onOpen  : function (event) {
+                event.onComplete = function () {
+                    $('#w2ui-popup #main').w2render('recordSelectorGrid');
+                    w2ui.recordSelectorGrid.records.slice().forEach(function(r) { w2ui.recordSelectorGrid.expand(r.recid); });
+                };
+            },
+            onToggle: function (event) {
+                $(w2ui.recordSelectorGrid.box).hide();
+                event.onComplete = function () {
+                    $(w2ui.recordSelectorGrid.box).show();
+                    w2ui.recordSelectorGrid.resize();
+                }
+            }
+        });
+    }
+
     function InitializeFindAndReplaceDialog() {
         var languageItems = [];
         var availableLanguages = XrmTranslator.GetGrid().columns;
@@ -603,6 +728,12 @@
                     '            <input name="ignoreCase" type="checkbox"/>'+
                     '        </div>'+
                     '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Select records:</label>'+
+                    '        <div>'+
+                    '            <input name="selectRecords" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
                     '</div>'+
                     '<div class="w2ui-buttons">'+
                     '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
@@ -613,13 +744,14 @@
                     { field: 'replace', type: 'text', required: true },
                     { field: 'regex', type: 'checkbox', required: true },
                     { field: 'ignoreCase', type: 'checkbox', required: true },
+                    { field: 'selectRecords', type: 'checkbox', required: false },
                     { field: 'column', type: 'list', required: true, options: { items: languageItems } }
                 ],
                 actions: {
                     "ok": function () {
                         this.validate();
                         w2popup.close();
-                        FindRecords(this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id, this.record.column.text);
+                        XrmTranslator.FindRecords(undefined, this.record.find, this.record.replace, this.record.regex, this.record.ignoreCase, this.record.column.id, this.record.column.text, this.record.selectRecords);
                     },
                     "cancel": function () {
                         w2popup.close();
@@ -683,7 +815,7 @@
 
     function DisableColumns() {
         XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
-        XrmTranslator.GetGrid().columns.forEach(c => {
+        XrmTranslator.GetGrid().columns.forEach(function(c) {
             if (c["editable"]) {
                 c["editableBackup"] = c["editable"]; delete c["editable"];
             } 
@@ -693,7 +825,7 @@
 
     function EnableColumns() {
         XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
-        XrmTranslator.GetGrid().columns.forEach(c => { 
+        XrmTranslator.GetGrid().columns.forEach(function(c) { 
             if (c["editableBackup"]) { 
                 c["editable"] = c["editableBackup"]; delete c["editableBackup"]; 
             }
@@ -1105,11 +1237,7 @@
     XrmTranslator.GetAllRecords = function() {
         var records = XrmTranslator.GetGrid().records;
 
-        var getRecords = function(recs) {
-            return recs.reduce(function(all, cur) { return all.concat([cur, ...getRecords((cur.w2ui && cur.w2ui.children) ? cur.w2ui.children : [])])}, [])
-        };
-
-        return Array.from(new Set(getRecords(records)));
+        return Array.from(new Set(FlattenRecords(records)));
     };
 
     XrmTranslator.GetColumns = function (includeSchemaName) {

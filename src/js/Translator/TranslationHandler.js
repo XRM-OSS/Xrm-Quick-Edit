@@ -246,7 +246,7 @@
         }
     }
 
-    function ProposeTranslations(fromLcid, destLcid) {
+    TranslationHandler.ProposeTranslations = function(records, fromLcid, destLcid) {
         XrmTranslator.LockGrid("Translating...");
 
         var authKey = XrmTranslator.config.translationApiKey;
@@ -266,7 +266,6 @@
             return;
         }
 
-        var records = XrmTranslator.GetAllRecords();
         var updateRecords = [];
         var translationRequests = [];
 
@@ -286,11 +285,6 @@
 
             // Skip records that have no source text
             if (!record[fromLcid]) {
-                continue;
-            }
-
-            // If original record had translation set and it was not cleared by pending changes, we skip this record
-            if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
                 continue;
             }
 
@@ -337,6 +331,12 @@
                     '            <input name="targetLcid" type="list"/>'+
                     '        </div>'+
                     '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>Translate All Missing:</label>'+
+                    '        <div>'+
+                    '            <input name="translateMissing" type="checkbox"/>'+
+                    '        </div>'+
+                    '    </div>'+
                     '</div>'+
                     '<div class="w2ui-buttons">'+
                     '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
@@ -344,13 +344,29 @@
                     '</div>',
                 fields: [
                     { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
-                    { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } }
+                    { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } },
+                    { field: 'translateMissing', type: 'checkbox', required: false }
                 ],
                 actions: {
                     "ok": function () {
                         this.validate();
                         w2popup.close();
-                        ProposeTranslations(this.record.sourceLcid.id, this.record.targetLcid.id);
+
+                        if (this.record.translateMissing) {
+                            var destLcid = this.record.targetLcid.id;
+                            var records = XrmTranslator.GetAllRecords().filter(function (record) {
+                                // If original record had translation set and it was not cleared by pending changes, we skip this record
+                                if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
+                                    return false;
+                                }
+
+                                return true;
+                            });
+                            
+                            TranslationHandler.ProposeTranslations(records, this.record.sourceLcid.id, this.record.targetLcid.id);
+                        } else {
+                            XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id]);
+                        }
                     },
                     "cancel": function () {
                         w2popup.close();
@@ -478,10 +494,10 @@
     TranslationHandler.FindPortalLanguages = function () {
         return WebApiClient.Retrieve({entityName: "adx_websitelanguage", queryParams: "?$select=_adx_websiteid_value&$expand=adx_PortalLanguageId($select=adx_lcid,adx_languagecode,adx_portallanguageid)"})
         .then(function (r) {
-            return r.value.map(w => ({ id: w.adx_websitelanguageid, data: w }));
+            return r.value.map(function(w) { return { id: w.adx_websitelanguageid, data: w }; });
         })
         .then(function (r) {
-            return r.reduce((all, cur) => { all[cur.id] = cur.data; return all }, {} );
+            return r.reduce(function(all, cur) { all[cur.id] = cur.data; return all; }, {});
         });
     }
 

@@ -162,7 +162,7 @@
                 return XrmTranslator.Publish();
             })
             .then(function(response) {
-                return XrmTranslator.AddToSolution(updates.map(u => u.MetadataId), XrmTranslator.ComponentType.Attribute);
+                return XrmTranslator.AddToSolution(updates.map(function(u) { return u.MetadataId; }), XrmTranslator.ComponentType.Attribute);
             })
             .then(function(response) {
                 return XrmTranslator.ReleaseLockAndPrompt();
