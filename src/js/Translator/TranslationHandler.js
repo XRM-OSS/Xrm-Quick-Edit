@@ -43,10 +43,11 @@
         return null;
     }
 
-    const deeplTranslator = function () {
-        var translationApiUrl = "https://api.deepl.com/v2/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]&tag_handling=xml";
+    const deeplTranslator = function (authKey) {
+        var baseUrl = "https://api.deepl.com/v2";
+        var translationApiUrl = baseUrl + "/translate?auth_key=[auth_key]&source_lang=[source_lang]&target_lang=[target_lang]&text=[text]&tag_handling=xml";
 
-        function BuildTranslationUrl (authKey, fromLanguage, destLanguage, phrase) {
+        function BuildTranslationUrl (fromLanguage, destLanguage, phrase) {
             return translationApiUrl
                 .replace("[auth_key]", authKey)
                 .replace("[source_lang]", fromLanguage)
@@ -54,11 +55,11 @@
                 .replace("[text]", encodeURIComponent(phrase));
         }
     
-        this.GetTranslation = function(authKey, fromLanguage, destLanguage, phrase) {
+        this.GetTranslation = function(fromLanguage, destLanguage, phrase) {
             $.support.cors = true;
     
             return WebApiClient.Promise.resolve($.ajax({
-                url: BuildTranslationUrl(authKey, fromLanguage, destLanguage, phrase),
+                url: BuildTranslationUrl(fromLanguage, destLanguage, phrase),
                 type: "GET",
                 crossDomain: true,
                 dataType: "json"
@@ -93,10 +94,34 @@
 
             return translations;
         }
+
+        this.CanTranslate = function(fromLcid, destLcid) {
+            $.support.cors = true;
+    
+            return WebApiClient.Promise.resolve($.ajax({
+                url: baseUrl + "/translate?auth_key=" + authKey,
+                type: "GET",
+                crossDomain: true,
+                dataType: "json"
+            }))
+            .then(function(result) {
+                const canTranslateSource = result.some(function (l) {
+                    return l.language.toLowerCase() === fromLcid.toLowerCase()
+                });
+
+                const canTranslateTarget = result.some(function (l) {
+                    return l.language.toLowerCase() === destLcid.toLowerCase()
+                });
+
+                return canTranslateSource && canTranslateTarget;
+            });
+        }
     };   
 
-    const azureTranslator = function () {
-        var translationApiUrl = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=[source_lang]&to=[target_lang]";
+    const azureTranslator = function (authKey) {
+        var baseUrl = "https://api.cognitive.microsofttranslator.com";
+        var translationApiUrl = baseUrl + "/translate?api-version=3.0&from=[source_lang]&to=[target_lang]";
+        var languageUrl = baseUrl + "/languages?api-version=3.0";
 
         function BuildTranslationUrl (fromLanguage, destLanguage) {
             return translationApiUrl
@@ -104,7 +129,7 @@
                 .replace("[target_lang]", destLanguage);
         }
     
-        this.GetTranslation = function(authKey, fromLanguage, destLanguage, phrase) {
+        this.GetTranslation = function(fromLanguage, destLanguage, phrase) {
             $.support.cors = true;
 
             return WebApiClient.Promise.resolve($.ajax({
@@ -152,6 +177,29 @@
             }
 
             return translations;
+        }
+
+        this.CanTranslate = function(fromLcid, destLcid) {
+            $.support.cors = true;
+
+            return WebApiClient.Promise.resolve($.ajax({
+                url: languageUrl,
+                dataType: "json",
+                contentType: "application/json",
+                type: "POST",
+                data: JSON.stringify([{"Text":phrase}]),
+                crossDomain: true,
+                dataType: "json",
+                headers: {
+                    "Ocp-Apim-Subscription-Key": authKey
+                }
+            }))
+            .then(function(result) {
+                const canTranslateSource = !!result.translation[fromLcid.toLowerCase()];
+                const canTranslateTarget = !!result.translation[destLcid.toLowerCase()];
+
+                return canTranslateSource && canTranslateTarget;
+            });
         }
     };
 
@@ -235,39 +283,43 @@
         });
     }
 
-    function CreateTranslator (apiProvider) {
+    function CreateTranslator (apiProvider, authKey) {
         switch ((apiProvider ||"").trim().toLowerCase()) {
             case "deepl":
-                return new deeplTranslator();
+                return new deeplTranslator(authKey);
             case "azure":
-                return new azureTranslator();
+                return new azureTranslator(authKey);
             default:
                 return null;
         }
     }
 
-    TranslationHandler.ProposeTranslations = function(records, fromLcid, destLcid) {
-        XrmTranslator.LockGrid("Translating...");
-
-        var authKey = XrmTranslator.config.translationApiKey;
-        var authProvider = XrmTranslator.config.translationApiProvider;
-
+    function FindTranslator(authKey, authProvider, fromLcid, destLcid) {
         if (!authKey) {
             XrmTranslator.UnlockGrid();
             w2alert("Auth Key is missing, please add one in the config web resource");
-            return;
+            return null;
         }
 
-        var translator = CreateTranslator(authProvider);
+        var translator = CreateTranslator(authProvider, authKey);
 
         if (!translator) {
             XrmTranslator.UnlockGrid();
             w2alert("Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported");
-            return;
+            return null;
         }
 
-        var updateRecords = [];
-        var translationRequests = [];
+        return translator.CanTranslate(fromLcid, destLcid)
+        .then(function(canTranslate) {
+            if (canTranslate) {
+                return translator;
+            }
+            return null;
+        })
+    }
+
+    TranslationHandler.ProposeTranslations = function(records, fromLcid, destLcid) {
+        XrmTranslator.LockGrid("Translating...");    
 
         var fromIso = GetLanguageIsoByLcid(fromLcid);
         var toIso = GetLanguageIsoByLcid(destLcid);
@@ -280,24 +332,39 @@
             return;
         }
 
-        for (var i = 0; i < records.length; i++) {
-            var record = records[i];
+        FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, fromIso, toIso)
+        .then(function (translator) {
+            if (translator) {
+                return translator;
+            }
+            else if (XrmTranslator.config.translationApiKeyFallback && XrmTranslator.config.translationApiProviderFallback) {
+                FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso)
+            }
+            return null;
+        })
+        .then(function(translator) {
+            var updateRecords = [];
+            var translationRequests = [];
 
-            // Skip records that have no source text
-            if (!record[fromLcid]) {
-                continue;
+            for (var i = 0; i < records.length; i++) {
+                var record = records[i];
+
+                // Skip records that have no source text
+                if (!record[fromLcid]) {
+                    continue;
+                }
+
+                updateRecords.push(record);
+                translationRequests.push(translator.GetTranslation(fromIso, toIso, w2utils.decodeTags(record[fromLcid])));
             }
 
-            updateRecords.push(record);
-            translationRequests.push(translator.GetTranslation(authKey, fromIso, toIso, w2utils.decodeTags(record[fromLcid])));
-        }
-
-        WebApiClient.Promise.all(translationRequests)
-            .then(function (responses) {
-                ShowTranslationResults(translator.AddTranslations(fromLcid, destLcid, updateRecords, responses));
-                XrmTranslator.UnlockGrid();
-            })
-            .catch(XrmTranslator.errorHandler);
+            return WebApiClient.Promise.all(translationRequests)
+        })
+        .then(function (responses) {
+            ShowTranslationResults(translator.AddTranslations(fromLcid, destLcid, updateRecords, responses));
+            XrmTranslator.UnlockGrid();
+        })
+        .catch(XrmTranslator.errorHandler);
     }
 
     function InitializeTranslationPrompt () {
