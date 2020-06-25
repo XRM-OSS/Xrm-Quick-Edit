@@ -99,7 +99,7 @@
             $.support.cors = true;
     
             return WebApiClient.Promise.resolve($.ajax({
-                url: baseUrl + "/translate?auth_key=" + authKey,
+                url: baseUrl + "/languages?auth_key=" + authKey,
                 type: "GET",
                 crossDomain: true,
                 dataType: "json"
@@ -113,7 +113,10 @@
                     return l.language.toLowerCase() === destLcid.toLowerCase()
                 });
 
-                return canTranslateSource && canTranslateTarget;
+                return {
+                    [fromLcid]: canTranslateSource,
+                    [destLcid]: canTranslateTarget
+                };
             });
         }
     };   
@@ -181,15 +184,12 @@
 
         this.CanTranslate = function(fromLcid, destLcid) {
             $.support.cors = true;
-
+            
             return WebApiClient.Promise.resolve($.ajax({
                 url: languageUrl,
                 dataType: "json",
-                contentType: "application/json",
-                type: "POST",
-                data: JSON.stringify([{"Text":phrase}]),
+                type: "GET",
                 crossDomain: true,
-                dataType: "json",
                 headers: {
                     "Ocp-Apim-Subscription-Key": authKey
                 }
@@ -198,7 +198,10 @@
                 const canTranslateSource = !!result.translation[fromLcid.toLowerCase()];
                 const canTranslateTarget = !!result.translation[destLcid.toLowerCase()];
 
-                return canTranslateSource && canTranslateTarget;
+                return {
+                    [fromLcid]: canTranslateSource,
+                    [destLcid]: canTranslateTarget
+                };
             });
         }
     };
@@ -294,27 +297,30 @@
         }
     }
 
-    function FindTranslator(authKey, authProvider, fromLcid, destLcid) {
+    function FindTranslator(authKey, authProvider, fromLcid, destLcid, preFallBackError) {
         if (!authKey) {
             XrmTranslator.UnlockGrid();
-            w2alert("Auth Key is missing, please add one in the config web resource");
-            return null;
+            return [null, "Auth Key is missing, please add one in the config web resource"];
         }
 
         var translator = CreateTranslator(authProvider, authKey);
 
         if (!translator) {
             XrmTranslator.UnlockGrid();
-            w2alert("Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported");
-            return null;
+            return [null, "Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported"];
         }
 
         return translator.CanTranslate(fromLcid, destLcid)
         .then(function(canTranslate) {
-            if (canTranslate) {
-                return translator;
+            if (canTranslate[fromLcid] && canTranslate[destLcid]) {
+                return [translator];
             }
-            return null;
+
+            const errorMsg = [preFallBackError, authProvider + " translator does not support the current languages: " + fromLcid + "(" + canTranslate[fromLcid] + "), " + destLcid + "(" + canTranslate[destLcid] + ")"]
+                .filter(function(e) { return !!e })
+                .join("\n");
+
+            return [null, errorMsg];
         })
     }
 
@@ -333,16 +339,19 @@
         }
 
         FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, fromIso, toIso)
-        .then(function (translator) {
-            if (translator) {
-                return translator;
+        .then(function (result) {
+            if (!result[0] && XrmTranslator.config.translationApiKeyFallback && XrmTranslator.config.translationApiProviderFallback) {
+                return FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso, result[1])
             }
-            else if (XrmTranslator.config.translationApiKeyFallback && XrmTranslator.config.translationApiProviderFallback) {
-                FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso)
-            }
-            return null;
+            return result;
         })
-        .then(function(translator) {
+        .then(function(result) {
+            var translator = result[0];
+
+            if (!translator) {
+                w2alert(result[1]);
+            }
+
             var updateRecords = [];
             var translationRequests = [];
 
@@ -359,10 +368,10 @@
             }
 
             return WebApiClient.Promise.all(translationRequests)
-        })
-        .then(function (responses) {
-            ShowTranslationResults(translator.AddTranslations(fromLcid, destLcid, updateRecords, responses));
-            XrmTranslator.UnlockGrid();
+            .then(function (responses) {
+                ShowTranslationResults(translator.AddTranslations(fromLcid, destLcid, updateRecords, responses));
+                XrmTranslator.UnlockGrid();
+            });
         })
         .catch(XrmTranslator.errorHandler);
     }
