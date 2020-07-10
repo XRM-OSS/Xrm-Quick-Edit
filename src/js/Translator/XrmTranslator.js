@@ -815,6 +815,10 @@
 
     function DisableColumns() {
         XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        
+        w2ui['grid_toolbar'].disable("autoTranslate");
+        w2ui['grid_toolbar'].disable("findReplace");
+ 
         XrmTranslator.GetGrid().columns.forEach(function(c) {
             if (c["editable"]) {
                 c["editableBackup"] = c["editable"]; delete c["editable"];
@@ -825,6 +829,10 @@
 
     function EnableColumns() {
         XrmTranslator.GetGrid().toolbar.set("lockOrUnlock", { img: XrmTranslator.lockAcquired ? 'w2ui-icon-pencil' : 'w2ui-icon-cross' });
+        
+        w2ui['grid_toolbar'].enable("autoTranslate");
+        w2ui['grid_toolbar'].enable("findReplace");
+
         XrmTranslator.GetGrid().columns.forEach(function(c) { 
             if (c["editableBackup"]) { 
                 c["editable"] = c["editableBackup"]; delete c["editableBackup"]; 

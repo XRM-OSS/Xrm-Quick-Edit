@@ -74,7 +74,8 @@
                 var updateRecord = updateRecords[i];
     
                 if (response.translations.length > 0) {
-                    var translation = w2utils.encodeTags(response.translations[0].text);
+                    var decoded = response.translations[0].text.replace(/<escape data="(.*?(?="\/>))"\/>/gi, "$1");
+                    var translation = w2utils.encodeTags(decoded);
     
                     var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
     
@@ -123,7 +124,7 @@
 
     const azureTranslator = function (authKey) {
         var baseUrl = "https://api.cognitive.microsofttranslator.com";
-        var translationApiUrl = baseUrl + "/translate?api-version=3.0&from=[source_lang]&to=[target_lang]";
+        var translationApiUrl = baseUrl + "/translate?api-version=3.0&from=[source_lang]&to=[target_lang]&textType=html";
         var languageUrl = baseUrl + "/languages?api-version=3.0";
 
         function BuildTranslationUrl (fromLanguage, destLanguage) {
@@ -161,7 +162,8 @@
                 }
 
                 if (response.translations.length > 0) {
-                    var translation = w2utils.encodeTags(response.translations[0].text);
+                    var decoded = response.translations[0].text.replace(/<escape data="(.*?(?="\/>))"\/>/gi, "$1");
+                    var translation = w2utils.encodeTags(decoded);
     
                     var record = XrmTranslator.GetByRecId(updateRecords, updateRecord.recid);
     
@@ -324,8 +326,19 @@
         })
     }
 
-    TranslationHandler.ProposeTranslations = function(records, fromLcid, destLcid) {
+    TranslationHandler.ProposeTranslations = function(recordsRaw, fromLcid, destLcid, translateMissing) {
         XrmTranslator.LockGrid("Translating...");    
+
+        var records = !translateMissing
+            ? recordsRaw
+            : recordsRaw.filter(function (record) {
+                // If original record had translation set and it was not cleared by pending changes, we skip this record
+                if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid]) && (translateMissing !== "missingOrIdentical" || record[fromLcid] !== record[destLcid])) {
+                    return false;
+                }
+
+                return true;
+            });
 
         var fromIso = GetLanguageIsoByLcid(fromLcid);
         var toIso = GetLanguageIsoByLcid(destLcid);
@@ -363,8 +376,14 @@
                     continue;
                 }
 
+                const source = XrmTranslator.config.translationExceptions && XrmTranslator.config.translationExceptions.length
+                ? XrmTranslator.config.translationExceptions.reduce(function(all, cur) {
+                    return (all || "").replace(new RegExp(cur, "gmi"), '<escape data="$1"/>')
+                }, record[fromLcid])
+                : record[fromLcid]
+
                 updateRecords.push(record);
-                translationRequests.push(translator.GetTranslation(fromIso, toIso, w2utils.decodeTags(record[fromLcid])));
+                translationRequests.push(translator.GetTranslation(fromIso, toIso, w2utils.decodeTags(source)));
             }
 
             return WebApiClient.Promise.all(translationRequests)
@@ -408,9 +427,9 @@
                     '        </div>'+
                     '    </div>'+
                     '    <div class="w2ui-field">'+
-                    '        <label>Translate All Missing:</label>'+
+                    '        <label>Translate All:</label>'+
                     '        <div>'+
-                    '            <input name="translateMissing" type="checkbox"/>'+
+                    '            <input name="translateMissing" type="list"/>'+
                     '        </div>'+
                     '    </div>'+
                     '</div>'+
@@ -421,28 +440,14 @@
                 fields: [
                     { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
                     { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } },
-                    { field: 'translateMissing', type: 'checkbox', required: false }
+                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: "", text: "" }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
                 ],
                 actions: {
                     "ok": function () {
                         this.validate();
                         w2popup.close();
 
-                        if (this.record.translateMissing) {
-                            var destLcid = this.record.targetLcid.id;
-                            var records = XrmTranslator.GetAllRecords().filter(function (record) {
-                                // If original record had translation set and it was not cleared by pending changes, we skip this record
-                                if (record[destLcid] && (!record.w2ui || !record.w2ui.changes || record.w2ui.changes[destLcid])) {
-                                    return false;
-                                }
-
-                                return true;
-                            });
-                            
-                            TranslationHandler.ProposeTranslations(records, this.record.sourceLcid.id, this.record.targetLcid.id);
-                        } else {
-                            XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id]);
-                        }
+                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id : ""]);
                     },
                     "cancel": function () {
                         w2popup.close();

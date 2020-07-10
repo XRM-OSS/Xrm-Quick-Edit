@@ -81,12 +81,24 @@
         grid.clear();
 
         var records = [];
+        var excludedColumnNumbers = [];
 
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
 
-            var displayNames = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
+            if (excludedColumnNumbers.indexOf(attribute.ColumnNumber) !== -1) {
+                continue;
+            }
 
+            // If attribute has a formula definition, it is a rollup field.
+            // These always have directly following (in terms of column number) a state and a date field.
+            // These cause CRM exceptions when being translated, so we need to skip these
+            if (attribute.FormulaDefinition) {
+                excludedColumnNumbers.push(attribute.ColumnNumber + 1, attribute.ColumnNumber + 2);
+            }
+
+            var displayNames = attribute[XrmTranslator.GetComponent()].LocalizedLabels;
+            
             if (!displayNames || displayNames.length === 0) {
                 continue;
             }
