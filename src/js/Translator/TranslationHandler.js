@@ -440,7 +440,7 @@
                 fields: [
                     { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
                     { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } },
-                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: "", text: "" }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
+                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: "", text: "None" }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
                 ],
                 actions: {
                     "ok": function () {
