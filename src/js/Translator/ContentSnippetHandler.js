@@ -197,7 +197,7 @@
                 TranslationHandler.FillPortalLanguageCodes(portalLanguages);
             }
 
-            return WebApiClient.Retrieve({entityName: "adx_contentsnippet", queryParams: "?$select=adx_name,adx_value&$filter=_adx_contentsnippetlanguageid_value ne null&$expand=adx_websiteid($select=adx_websiteid,adx_name),adx_contentsnippetlanguageid($select=adx_websitelanguageid)&$orderby=adx_name"});
+            return WebApiClient.Retrieve({entityName: "adx_contentsnippet", queryParams: "?$select=adx_name,adx_value&$filter=_adx_contentsnippetlanguageid_value ne null&$expand=adx_websiteid($select=adx_websiteid,adx_name),adx_contentsnippetlanguageid($select=adx_websitelanguageid)&$orderby=adx_name", returnAllPages: true });
         })
         .then(function(response) {
             snippets = response.value.map(function (s) { s.adx_value = w2utils.encodeTags(s.adx_value); return s; });

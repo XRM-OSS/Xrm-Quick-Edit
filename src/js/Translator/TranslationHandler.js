@@ -440,14 +440,14 @@
                 fields: [
                     { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
                     { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } },
-                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: "", text: "None" }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
+                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: " ", text: " " }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
                 ],
                 actions: {
                     "ok": function () {
                         this.validate();
                         w2popup.close();
 
-                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id : ""]);
+                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id.trim() : ""]);
                     },
                     "cancel": function () {
                         w2popup.close();
