@@ -299,17 +299,27 @@
         }
     }
 
-    function FindTranslator(authKey, authProvider, fromLcid, destLcid, preFallBackError) {
+    function BuildError(preFallBackError, error) {
+        return [preFallBackError, error]
+            .filter(function(e) { return !!e })
+            .join("<br />");
+    }
+
+    function FindTranslator(authKey, authProvider, fromLcid, destLcid, apiProvider, preFallBackError) {
+        if(apiProvider !== "auto" && (authProvider ||"").trim().toLowerCase() !== apiProvider) {
+            return WebApiClient.Promise.resolve([null, BuildError(preFallBackError, "")]);
+        }
+        
         if (!authKey) {
             XrmTranslator.UnlockGrid();
-            return [null, "Auth Key is missing, please add one in the config web resource"];
+            return WebApiClient.Promise.resolve([null, BuildError(preFallBackError, authProvider + ": Auth Key is missing, please add one in the config web resource")]);
         }
 
         var translator = CreateTranslator(authProvider, authKey);
 
         if (!translator) {
             XrmTranslator.UnlockGrid();
-            return [null, "Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported"];
+            return WebApiClient.Promise.resolve([null, BuildError(preFallBackError, authProvider  + ": Found not supported or missing API Provider, please set one in the config web resource (currently only 'deepl' and 'azure' are supported")]);
         }
 
         return translator.CanTranslate(fromLcid, destLcid)
@@ -318,15 +328,13 @@
                 return [translator];
             }
 
-            const errorMsg = [preFallBackError, authProvider + " translator does not support the current languages: " + fromLcid + "(" + canTranslate[fromLcid] + "), " + destLcid + "(" + canTranslate[destLcid] + ")"]
-                .filter(function(e) { return !!e })
-                .join("\n");
+            const errorMsg = BuildError(preFallBackError, authProvider + " translator does not support the current languages: " + fromLcid + "(" + canTranslate[fromLcid] + "), " + destLcid + "(" + canTranslate[destLcid] + ")");
 
             return [null, errorMsg];
         })
     }
 
-    TranslationHandler.ProposeTranslations = function(recordsRaw, fromLcid, destLcid, translateMissing) {
+    TranslationHandler.ProposeTranslations = function(recordsRaw, fromLcid, destLcid, translateMissing, apiProvider) {
         XrmTranslator.LockGrid("Translating...");    
 
         var records = !translateMissing
@@ -351,10 +359,10 @@
             return;
         }
 
-        FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, fromIso, toIso)
+        FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, fromIso, toIso, apiProvider)
         .then(function (result) {
-            if (!result[0] && XrmTranslator.config.translationApiKeyFallback && XrmTranslator.config.translationApiProviderFallback) {
-                return FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso, result[1])
+            if (!result[0] && XrmTranslator.config.translationApiProviderFallback) {
+                return FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso, apiProvider, result[1])
             }
             return result;
         })
@@ -363,6 +371,7 @@
 
             if (!translator) {
                 w2alert(result[1]);
+                return null;
             }
 
             var updateRecords = [];
@@ -432,6 +441,12 @@
                     '            <input name="translateMissing" type="list"/>'+
                     '        </div>'+
                     '    </div>'+
+                    '    <div class="w2ui-field">'+
+                    '        <label>API Provider:</label>'+
+                    '        <div>'+
+                    '            <input name="apiProvider" type="list"/>'+
+                    '        </div>'+
+                    '    </div>'+
                     '</div>'+
                     '<div class="w2ui-buttons">'+
                     '    <button class="w2ui-btn" name="cancel">Cancel</button>'+
@@ -440,14 +455,15 @@
                 fields: [
                     { field: 'targetLcid', type: 'list', required: true, options: { items: languageItems } },
                     { field: 'sourceLcid', type: 'list', required: true, options: { items: languageItems } },
-                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: " ", text: " " }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } }
+                    { field: 'translateMissing', type: 'list', required: false, options: { items: [{id: " ", text: " " }, { id: "missing", text: "All Missing" }, { id: "missingOrIdentical", text: "All Missing Or Identical"}] } },
+                    { field: 'apiProvider', type: 'list', required: false, options: { selected: { id: "auto" }, items: [{id: "auto", text: "Auto" }, { id: "deepl", text: "DeepL" }, { id: "azure", text: "Azure"}] } }
                 ],
                 actions: {
                     "ok": function () {
                         this.validate();
                         w2popup.close();
 
-                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id.trim() : ""]);
+                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id.trim() : "", this.record.apiProvider ? this.record.apiProvider.id : ""]);
                     },
                     "cancel": function () {
                         w2popup.close();
