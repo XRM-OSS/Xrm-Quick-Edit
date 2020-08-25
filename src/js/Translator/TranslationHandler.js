@@ -463,7 +463,7 @@
                         this.validate();
                         w2popup.close();
 
-                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id.trim() : "", this.record.apiProvider ? this.record.apiProvider.id : ""]);
+                        XrmTranslator.ShowRecordSelector("TranslationHandler.ProposeTranslations", [this.record.sourceLcid.id, this.record.targetLcid.id, this.record.translateMissing ? this.record.translateMissing.id.trim() : "", this.record.apiProvider ? this.record.apiProvider.id : ""], (XrmTranslator.GetGrid().getSelection() || []));
                     },
                     "cancel": function () {
                         w2popup.close();
@@ -539,13 +539,15 @@
 
     TranslationHandler.FillLanguageCodes = function(languages, userSettings, config) {
         var grid = XrmTranslator.GetGrid();
-
         var languageCount = languages.length;
+
+        // Reset schema name col
+        grid.columns[0].size = XrmTranslator.defaultSchemaNameSize;
 
         return GetLocales()
         .then(function(locales) {
             // 100% full width, minus length of the schema name grid, divided by number of languages is space left for each language
-            var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / languageCount;
+            var columnWidth = (100 - parseInt(XrmTranslator.defaultSchemaNameSize.replace("%"))) / languageCount;
 
             for (var i = 0; i < languages.length; i++) {
                 var language = languages[i];
@@ -568,18 +570,22 @@
     TranslationHandler.FillPortalLanguageCodes = function(portalLanguages) {
         var grid = XrmTranslator.GetGrid();
 
-        var languages = Object.keys(portalLanguages).map(function(k) { return portalLanguages[k] }).reduce(function(all, cur) { if (!all[cur.adx_PortalLanguageId.adx_lcid.toString()]) { all[cur.adx_PortalLanguageId.adx_lcid.toString()] = cur.adx_PortalLanguageId.adx_languagecode; } return all; }, {});
-        
-        var lcids = Object.keys(languages);
-        var columnWidth = (100 - parseInt(grid.columns[0].size.replace("%"))) / lcids.length;
+        // Reset schema name col
+        grid.columns[0].size = XrmTranslator.defaultSchemaNameSize;
 
-        for (var i = 0; i < lcids.length; i++) {
-            var lcid = lcids[i];
+        var languages = portalLanguages
+            .reduce(function(all, cur) { if (!all[cur.adx_PortalLanguageId.adx_languagecode]) { all[cur.adx_PortalLanguageId.adx_languagecode] = cur.adx_PortalLanguageId.adx_lcid.toString() } return all; }, {});
+
+        var locales = Object.keys(languages);
+        var columnWidth = (100 - parseInt(XrmTranslator.defaultSchemaNameSize.replace("%"))) / locales.length;
+
+        for (var i = 0; i < locales.length; i++) {
+            var locale = locales[i];
 
             var editable = { type: 'text' };
 
-            grid.addColumn({ field: lcid, caption: languages[lcid] || lcid, size: columnWidth + "%", sortable: true, editable: editable });
-            grid.addSearch({ field: lcid, caption: languages[lcid] || lcid, type: 'text' });
+            grid.addColumn({ field: languages[locale], caption: locale, size: columnWidth + "%", sortable: true, editable: editable });
+            grid.addSearch({ field: languages[locale], caption: locale, type: 'text' });
         }
 
         return languages;
@@ -591,10 +597,10 @@
     TranslationHandler.FindPortalLanguages = function () {
         return WebApiClient.Retrieve({entityName: "adx_websitelanguage", queryParams: "?$select=_adx_websiteid_value&$expand=adx_PortalLanguageId($select=adx_lcid,adx_languagecode,adx_portallanguageid)"})
         .then(function (r) {
-            return r.value.map(function(w) { return { id: w.adx_websitelanguageid, data: w }; });
-        })
-        .then(function (r) {
-            return r.reduce(function(all, cur) { all[cur.id] = cur.data; return all; }, {});
+            const languages = r.value;
+            languages.sort(function(a, b) { return ((a.adx_PortalLanguageId || {}).adx_languagecode || "").localeCompare((b.adx_PortalLanguageId || {}).adx_languagecode || "")});
+
+            return languages;
         });
     }
 

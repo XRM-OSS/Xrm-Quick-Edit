@@ -43,6 +43,8 @@
 
     XrmTranslator.columnRestoreNeeded = false;
 
+    XrmTranslator.defaultSchemaNameSize = "20%";
+
     var currentHandler = null;
 
     RegExp.escape= function(s) {
@@ -158,6 +160,9 @@
     }
 
     function SetHandler() {
+        // Deactivate selectColumn on each change, only ContentSnippetHandler supports this right now
+        w2ui.grid.show.selectColumn = false;
+
         if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
         }
@@ -180,11 +185,14 @@
             currentHandler = ChartHandler;
         }
         else if (XrmTranslator.GetType() === "content") {
+            w2ui.grid.show.selectColumn = true;
             currentHandler = ContentSnippetHandler;
         }
         else if (XrmTranslator.GetType() === "webresources") {
             currentHandler = WebResourceHandler;
         }
+
+        w2ui.grid.refresh();
     }
 
     XrmTranslator.errorHandler = function(error) {
@@ -544,7 +552,7 @@
 
     XrmTranslator.FindRecords = function(records, find, replace, useRegex, ignoreCase, column, columnName, selectRecords) {
         if (!records && selectRecords) {
-            XrmTranslator.ShowRecordSelector("XrmTranslator.FindRecords", [find, replace, useRegex, ignoreCase, column, columnName, selectRecords]);
+            XrmTranslator.ShowRecordSelector("XrmTranslator.FindRecords", [find, replace, useRegex, ignoreCase, column, columnName, selectRecords], (XrmTranslator.GetGrid().getSelection() || []));
             return;
         }
         else if (!records) {
@@ -603,7 +611,19 @@
         ShowFindAndReplaceResults(findings);
     }
 
-    XrmTranslator.ShowRecordSelector = function (callbackName, callbackParameters) {
+    function removeHideCheckBoxFlag (r) {
+        if (r.w2ui && r.w2ui.hideCheckBox) {
+            r.w2ui.hideCheckBox = false;
+        }
+
+        if (r.w2ui && r.w2ui.children) {
+            r.w2ui.children = r.w2ui.children.map(removeHideCheckBoxFlag);
+        }
+
+        return r;
+    }
+
+    XrmTranslator.ShowRecordSelector = function (callbackName, callbackParameters, preselectedRecords) {
         if (!w2ui.recordSelectorGrid) {
             var grid = {
                 name: 'recordSelectorGrid',
@@ -651,7 +671,7 @@
 
         w2ui.recordSelectorGrid.reset(true);
         w2ui.recordSelectorGrid.clear();
-        w2ui.recordSelectorGrid.add(JSON.parse(JSON.stringify(XrmTranslator.GetGrid().records)));
+        w2ui.recordSelectorGrid.add(JSON.parse(JSON.stringify(XrmTranslator.GetGrid().records)).map(removeHideCheckBoxFlag));
         w2ui.recordSelectorGrid.refresh();
 
         var callbackString = (callbackParameters || []).map(function(p) { return typeof(p) === "string" ? "'" + p + "'" : p + ""; }).join(",");
@@ -668,6 +688,14 @@
                 event.onComplete = function () {
                     $('#w2ui-popup #main').w2render('recordSelectorGrid');
                     w2ui.recordSelectorGrid.records.slice().forEach(function(r) { w2ui.recordSelectorGrid.expand(r.recid); });
+
+                    if (preselectedRecords) {
+                        for (let i = 0; i < preselectedRecords.length; i++) {
+                            const id = preselectedRecords[i];
+
+                            w2ui.recordSelectorGrid.select(id);
+                        }
+                    }
                 };
             },
             onToggle: function (event) {
@@ -1108,7 +1136,7 @@
                 { field: 'schemaName', caption: 'Schema Name', type: 'text' }
             ],
             columns: [
-                { field: 'schemaName', caption: 'Schema Name', size: '20%', sortable: true, resizable: true, frozen: true }
+                { field: 'schemaName', caption: 'Schema Name', size: XrmTranslator.defaultSchemaNameSize, sortable: true, resizable: true, frozen: true }
             ],
             onSave: function (event) {
                 currentHandler.Save();
@@ -1259,9 +1287,12 @@
     }
 
     XrmTranslator.ClearColumns = function() {
-        var columns = XrmTranslator.GetColumns();
+        // Don't remove schema name column
+        var columns = XrmTranslator.GetColumns(false);
 
-        columns.forEach(function(l) { XrmTranslator.GetGrid().removeColumn(l) });
+        columns.forEach(function(l) {
+            XrmTranslator.GetGrid().removeColumn(l);
+        });
     }
 
     XrmTranslator.AddSummary = function(records, countChildParents) {

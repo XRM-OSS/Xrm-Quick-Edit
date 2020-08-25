@@ -59,7 +59,7 @@
     function GetUpdates(records) {
         var updates = [];
 
-        var languageList = Object.keys(portalLanguages).map(function(k) { return portalLanguages[k] });
+        var languageList = portalLanguages;
 
         for (var i = 0; i < records.length; i++) {
             var record = records[i];
@@ -135,7 +135,10 @@
 
             var child = {
                 recid: key,
-                schemaName: key.substr(key.indexOf(idSeparator) + 1)
+                schemaName: key.substr(key.indexOf(idSeparator) + 1),
+                w2ui: {
+                    hideCheckBox: true
+                }
             };
 
             for (var k = 0; k < snippetsByGroup.length; k++) {
@@ -145,14 +148,13 @@
                     continue;
                 }
 
-                var websiteLanguage = portalLanguages[snippet.adx_contentsnippetlanguageid.adx_websitelanguageid];
+                var websiteLanguage = portalLanguages.find(function(l) { return l.adx_websitelanguageid === snippet.adx_contentsnippetlanguageid.adx_websitelanguageid; });
 
                 if (!websiteLanguage) {
                     continue;
                 }
 
                 var language = websiteLanguage.adx_PortalLanguageId.adx_lcid.toString();
-
                 child[language] = snippet.adx_value;
             }
 
