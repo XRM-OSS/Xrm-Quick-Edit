@@ -122,7 +122,7 @@
         }
     };   
 
-    const azureTranslator = function (authKey) {
+    const azureTranslator = function (authKey, region) {
         var baseUrl = "https://api.cognitive.microsofttranslator.com";
         var translationApiUrl = baseUrl + "/translate?api-version=3.0&from=[source_lang]&to=[target_lang]&textType=html";
         var languageUrl = baseUrl + "/languages?api-version=3.0";
@@ -136,6 +136,14 @@
         this.GetTranslation = function(fromLanguage, destLanguage, phrase) {
             $.support.cors = true;
 
+            const headers = {
+                "Ocp-Apim-Subscription-Key": authKey
+            };
+
+            if (region) {
+                headers["Ocp-Apim-Subscription-Region"] = region;
+            }
+
             return WebApiClient.Promise.resolve($.ajax({
                 url: BuildTranslationUrl(fromLanguage, destLanguage),
                 dataType: "json",
@@ -144,9 +152,7 @@
                 data: JSON.stringify([{"Text":phrase}]),
                 crossDomain: true,
                 dataType: "json",
-                headers: {
-                    "Ocp-Apim-Subscription-Key": authKey
-                }
+                headers: headers
             }));
         }
 
@@ -288,12 +294,12 @@
         });
     }
 
-    function CreateTranslator (apiProvider, authKey) {
+    function CreateTranslator (apiProvider, authKey, region) {
         switch ((apiProvider ||"").trim().toLowerCase()) {
             case "deepl":
                 return new deeplTranslator(authKey);
             case "azure":
-                return new azureTranslator(authKey);
+                return new azureTranslator(authKey, region);
             default:
                 return null;
         }
@@ -305,7 +311,7 @@
             .join("<br />");
     }
 
-    function FindTranslator(authKey, authProvider, fromLcid, destLcid, apiProvider, preFallBackError) {
+    function FindTranslator(authKey, authProvider, region, fromLcid, destLcid, apiProvider, preFallBackError) {
         if(apiProvider !== "auto" && (authProvider ||"").trim().toLowerCase() !== apiProvider) {
             return WebApiClient.Promise.resolve([null, BuildError(preFallBackError, "")]);
         }
@@ -315,7 +321,7 @@
             return WebApiClient.Promise.resolve([null, BuildError(preFallBackError, authProvider + ": Auth Key is missing, please add one in the config web resource")]);
         }
 
-        var translator = CreateTranslator(authProvider, authKey);
+        var translator = CreateTranslator(authProvider, authKey, region);
 
         if (!translator) {
             XrmTranslator.UnlockGrid();
@@ -359,10 +365,10 @@
             return;
         }
 
-        FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, fromIso, toIso, apiProvider)
+        FindTranslator(XrmTranslator.config.translationApiKey, XrmTranslator.config.translationApiProvider, XrmTranslator.config.translationApiRegion, fromIso, toIso, apiProvider)
         .then(function (result) {
             if (!result[0] && XrmTranslator.config.translationApiProviderFallback) {
-                return FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, fromIso, toIso, apiProvider, result[1])
+                return FindTranslator(XrmTranslator.config.translationApiKeyFallback, XrmTranslator.config.translationApiProviderFallback, XrmTranslator.config.translationApiRegionFallback, fromIso, toIso, apiProvider, result[1])
             }
             return result;
         })
