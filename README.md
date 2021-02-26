@@ -74,6 +74,13 @@ So please note that you should not abort loading of a form, as you might end up 
 In addition to that, sometimes publishing of CRM forms does not finish, if the UI language does not match the base language. Be sure to upgrade to at least v2.6.1 of this project, because since this version, the UI language is set to the base language before saving and publishing the changes. Your initial language is restored afterwards.
 If you still experience issues with the latest version, please file an issue on GitHub. When publishing should get stuck, publish changes on another entity and try again afterwards.
 
+##### Form Labels are not updated
+You might come across issues where you translate attributes and the labels in the form do not update appropriately.
+In that case, you probably overwrote the form labels for this attribute, which is why changes in the attribute label take no effect.
+Since v3.15.0 there is a cure for this issue: When inside the form translator, there is a button "Remove Overridden Attribute Labels", which removes all overridden attribute labels from your form. After that, your update attribute labels should display in the form as well again.
+
+> Use "Remove Overridden Attribute Labels" at your own risk. Please backup the forms before using this function by putting them in a solution and exporting it.
+
 #### System Form Names
 ![formmetahandler](https://cloud.githubusercontent.com/assets/4287938/23101941/9e4994f0-f69f-11e6-9c7e-e8d39aa2ce21.PNG)
 
