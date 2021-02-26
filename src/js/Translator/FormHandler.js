@@ -376,9 +376,53 @@
         };
     }
 
+    function uuidv4() {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+
+    FormHandler.RemoveOverriddenCellLabels = function() {
+        if (!XrmTranslator.metadata || !XrmTranslator.metadata.formid) {
+            return;
+        }
+
+        var formXml = GetParsedForm(XrmTranslator.metadata);
+        
+        Array.from(formXml.getElementsByTagName("cell"))
+        .forEach(function(c) {
+            const control = c.getElementsByTagName("control");
+
+            // We only want to fix overridden labels for attributes, all attribute controls have a datafieldname
+            if (!control || !control.length || !control[0].getAttribute("datafieldname")) {
+                return;
+            }
+
+            // Regenerate cell id so that MS can't find the old overridden labels
+            c.id = uuidv4();
+
+            const labels = c.getElementsByTagName("labels");
+            
+            if(labels && labels.length) {
+                const labelsNode = labels[0];
+
+                // Remove all labels
+                Array.from(labelsNode.getElementsByTagName("label")).forEach(function(l) { labelsNode.removeChild(l); });
+            }
+        });
+        
+        const serializer = new XMLSerializer();
+        const payload = {
+            formxml: serializer.serializeToString(formXml)
+        };
+
+        return FormHandler.Save(payload)
+        .then(function() { alert("Successfully removed all cell labels!"); })
+        .catch(function(e) { alert("Failed to remove cell labels: " + e.message); });
+    };
+
     FormHandler.Load = function () {
         var entityName = XrmTranslator.GetEntity();
-        var entityMetadataId = XrmTranslator.entityMetadata[entityName];
 
         var formRequest = {
             entityName: "systemform",
@@ -448,14 +492,21 @@
         .catch(XrmTranslator.errorHandler);
     }
 
-    FormHandler.Save = function() {
+    FormHandler.Save = function(payload) {
         XrmTranslator.LockGrid("Saving");
 
-        var records = XrmTranslator.GetAllRecords();
-        var formXml = GetParsedForm(XrmTranslator.metadata);
-        var updates = GetUpdates(records);
+        var update = undefined;
 
-        var update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
+        if (payload) {
+            update = payload;
+        }
+        else {
+            var records = XrmTranslator.GetAllRecords();
+            var formXml = GetParsedForm(XrmTranslator.metadata);
+            var updates = GetUpdates(records);
+
+            update = ApplyUpdates(updates, XrmTranslator.metadata, formXml);
+        }
 
         return XrmTranslator.SetBaseLanguage(XrmTranslator.userId)
         .then(function() {

@@ -82,19 +82,22 @@
 
         var records = [];
 
-        var excludedColumnNumbers = XrmTranslator.metadata.reduce(function(all, attribute) {
+        var excludedColumns = XrmTranslator.metadata.reduce(function(all, attribute) {
             // If attribute has a formula definition, it is a rollup field.
-            // These always have directly following (in terms of column number) a state and a date field.
-            // These cause CRM exceptions when being translated, so we need to skip these
+            // Their accompanying fields for date, state and base cause CRM exceptions when being translated, so we need to skip these
             if (attribute.FormulaDefinition) {
                 if (attribute.AttributeType === "Money") {
                     /// Skip _Base, _Date, _State
-                    all.push(attribute.ColumnNumber + 1, attribute.ColumnNumber + 2, attribute.ColumnNumber + 3);
+                    all.push(attribute.SchemaName + "_Base", attribute.SchemaName + "_Date", attribute.SchemaName + "_State");
                 }
                 else {
                     // Skip _Date, _State
-                    all.push(attribute.ColumnNumber + 1, attribute.ColumnNumber + 2);
+                    all.push(attribute.SchemaName + "_Date", attribute.SchemaName + "_State");
                 }
+            }
+            // Some attributes such as versionnumber can not be renamed / translated
+            else if (attribute.IsRenameable && !attribute.IsRenameable.Value) {
+                all.push(attribute.SchemaName);
             }
 
             return all;
@@ -103,12 +106,7 @@
         for (var i = 0; i < XrmTranslator.metadata.length; i++) {
             var attribute = XrmTranslator.metadata[i];
 
-            if (excludedColumnNumbers.indexOf(attribute.ColumnNumber) !== -1) {
-                continue;
-            }
-
-            // Some attributes such as versionnumber can not be renamed / translated
-            if (attribute.IsRenameable && !attribute.IsRenameable.Value) {
+            if (excludedColumns.indexOf(attribute.SchemaName) !== -1) {
                 continue;
             }
 

@@ -163,6 +163,8 @@
         // Deactivate selectColumn on each change, only ContentSnippetHandler supports this right now
         w2ui.grid.show.selectColumn = false;
 
+        w2ui['grid_toolbar'].hide("removeOverriddenAttributeLabels");
+
         if (XrmTranslator.GetType() === "attributes") {
             currentHandler = AttributeHandler;
         }
@@ -170,6 +172,7 @@
             currentHandler = OptionSetHandler;
         }
         else if (["forms", "dashboards"].indexOf(XrmTranslator.GetType()) !== -1) {
+            w2ui['grid_toolbar'].show("removeOverriddenAttributeLabels");
             currentHandler = FormHandler;
         }
         else if (XrmTranslator.GetType() === "views") {
@@ -193,6 +196,7 @@
         }
 
         w2ui.grid.refresh();
+        w2ui.grid_toolbar.refresh();
     }
 
     XrmTranslator.errorHandler = function(error) {
@@ -1088,7 +1092,10 @@
                     { id: 'Description', text: 'Description', icon: 'fa-picture' }
                 ]
             },
-            { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: LoadHandler }
+            { type: 'button', id: 'load', text: 'Load', img:'w2ui-icon-reload', onClick: LoadHandler },
+            { type: 'button', hidden: true, id: 'removeOverriddenAttributeLabels', text: 'Remove Overridden Attribute Labels', img:'w2ui-icon-cross', onClick: function(event) {
+                FormHandler.RemoveOverriddenCellLabels();
+            }}
         ];
 
         if (!XrmTranslator.config.hideAutoTranslate) {
