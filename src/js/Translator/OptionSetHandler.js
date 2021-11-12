@@ -36,14 +36,26 @@
         return id.substring(0, separatorIndex);
     }
 
+    function GetComponent () {
+        var component = XrmTranslator.GetComponent();
+        
+        if (component === "DisplayName") {
+            return "Label";
+        }
+        
+        return component;
+    }
+
     function GetOptionValueUpdate (attribute, value, labels) {
         if (!attribute.GlobalOptionSet && !attribute.OptionSet) {
             throw new Error("Either the global option set or the OptionSet have to be passed!");
         }
 
+        var updateComponent = GetComponent();
+
         var update = {
             Value: value,
-            Label: {
+            [updateComponent]: {
                 LocalizedLabels: labels
             },
             MergeLabels: true
@@ -150,7 +162,7 @@
 
         for (var j = 0; j < options.length; j++) {
             var option = options[j];
-            var labels = option.Label.LocalizedLabels;
+            var labels = option[GetComponent()].LocalizedLabels;
 
             var child = {
                 recid: record.recid + idSeparator + option.Value,
@@ -219,9 +231,15 @@
             queryParams: "/Attributes/Microsoft.Dynamics.CRM.StatusAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
         };
 
-        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest), WebApiClient.Retrieve(statusRequest)])
+        var multiOptionSetRequest = {
+            entityName: "EntityDefinition",
+            entityId: entityMetadataId,
+            queryParams: "/Attributes/Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
+        };
+
+        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest), WebApiClient.Retrieve(statusRequest), WebApiClient.Retrieve(multiOptionSetRequest)])
             .then(function(responses){
-                var responseValues = responses[0].value.concat(responses[1].value).concat(responses[2].value);
+                var responseValues = responses[0].value.concat(responses[1].value).concat(responses[2].value).concat(responses[3].value);
                 var attributes = responseValues.sort(XrmTranslator.SchemaNameComparer);
 
                 XrmTranslator.metadata = attributes;
