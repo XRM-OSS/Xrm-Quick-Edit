@@ -561,8 +561,8 @@
 
                 var editable = config.lockedLanguages && config.lockedLanguages.indexOf(language) !== -1 ? null : { type: 'text' };
 
-                grid.addColumn({ field: language, caption: locale.language || language, size: columnWidth + "%", sortable: true, editable: editable });
-                grid.addSearch({ field: language, caption: locale.language || language, type: 'text' });
+                grid.addColumn({ field: language, caption: `${locale.language || language} (${locale.code})`, size: columnWidth + "%", sortable: true, editable: editable });
+                grid.addSearch({ field: language, caption: `${locale.language || language} (${locale.code})`, type: 'text' });
 
                 if (config.hideLanguagesByDefault && language !== userSettings.uilanguageid) {
                     grid.hideColumn(language);
