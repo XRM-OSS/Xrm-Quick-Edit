@@ -231,15 +231,21 @@
             queryParams: "/Attributes/Microsoft.Dynamics.CRM.StatusAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
         };
 
+        var stateRequest = {
+            entityName: "EntityDefinition",
+            entityId: entityMetadataId,
+            queryParams: "/Attributes/Microsoft.Dynamics.CRM.StateAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
+        };
+
         var multiOptionSetRequest = {
             entityName: "EntityDefinition",
             entityId: entityMetadataId,
             queryParams: "/Attributes/Microsoft.Dynamics.CRM.MultiSelectPicklistAttributeMetadata?$expand=OptionSet,GlobalOptionSet"
         };
 
-        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest), WebApiClient.Retrieve(statusRequest), WebApiClient.Retrieve(multiOptionSetRequest)])
+        return WebApiClient.Promise.all([WebApiClient.Retrieve(optionSetRequest), WebApiClient.Retrieve(booleanRequest), WebApiClient.Retrieve(statusRequest), WebApiClient.Retrieve(stateRequest), WebApiClient.Retrieve(multiOptionSetRequest)])
             .then(function(responses){
-                var responseValues = responses[0].value.concat(responses[1].value).concat(responses[2].value).concat(responses[3].value);
+                var responseValues = responses[0].value.concat(responses[1].value).concat(responses[2].value).concat(responses[3].value).concat(responses[4].value);
                 var attributes = responseValues.sort(XrmTranslator.SchemaNameComparer);
 
                 XrmTranslator.metadata = attributes;
